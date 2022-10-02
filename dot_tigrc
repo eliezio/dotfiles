@@ -1,0 +1,4 @@
+# Please see 'man tigrc' for a complete reference.
+
+set main-view = line-number:yes,interval=5 id:yes,color date:default author:full commit-title:yes,refs,graph
+set line-graphics = utf-8
