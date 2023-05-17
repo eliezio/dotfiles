@@ -1,9 +1,9 @@
-font_family "JetBrainsMono Nerd Font"
+font_family JetBrainsMono Nerd Font
 {{ if eq .chezmoi.os "linux" -}}
 font_size 15
 shell /usr/bin/byobu
 {{ else if eq .chezmoi.os "darwin" -}}
-font_family "Meslo LG S Regular for Powerline"
+font_family Meslo LG S for Powerline
 font_size 18.0
 shell /bin/zsh --login -c {{ env "HOMEBREW_PREFIX" }}/bin/byobu
 {{ end -}}
