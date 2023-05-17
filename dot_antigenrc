@@ -36,3 +36,6 @@ antigen theme romkatv/powerlevel10k
 
 # Tell Antigen that you're done.
 antigen apply
+
+source $HOME/.zsh-custom/aliases.zsh
+
