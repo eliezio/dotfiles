@@ -33,6 +33,14 @@ source ~/.platformrc
 source ~/antigen.zsh
 antigen init ~/.antigenrc
 
+krew_bin=${KREW_ROOT:-$HOME/.krew}/bin
+
+for dir in $krew_bin; do
+    if [ -x "$dir" ]; then
+        export PATH="$dir:$PATH"
+    fi
+done
+
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
 
