@@ -1,0 +1,38 @@
+alias gw=./gradlew
+alias gwp="gw --console=plain"
+alias mw=./mvnw
+
+{{ if eq .chezmoi.os "linux" -}}
+open() {
+    for arg in "$@"; do
+        xdg-open "$arg" &> /dev/null
+    done
+}
+alias pbcopy='xclip -sel cl -i'
+alias pbpaste='xclip -sel cl -o'
+{{ end -}}
+
+# chezmoi
+alias cm=chezmoi
+
+# exa
+if (( $+commands[exa] )); then
+  alias ls='exa -l -g --icons'
+elif (( $+commands[lsd] )); then
+  alias ls=lsd
+fi
+
+# neovim
+if (( $+commands[nvim] )); then
+    alias vim=nvim
+    export EDITOR=nvim
+fi
+
+# Terraform
+if (( $+commands[terraform] )); then
+    alias tf=terraform
+    alias tfi='tf init'
+    alias tfp='tf plan'
+    alias tfa='tf apply'
+    alias tfaa='tf apply -auto-approve'
+fi

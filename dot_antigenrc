@@ -6,36 +6,55 @@
 antigen use oh-my-zsh
 
 # Bundles from the default repo (robbyrussell's oh-my-zsh).
+antigen bundle aliases
 antigen bundle asdf
-antigen bundle git
-antigen bundle pip
-antigen bundle command-not-found
-antigen bundle brew
-antigen bundle docker
-antigen bundle extract
-antigen bundle fzf
-antigen bundle httpie
-antigen bundle safe-paste
 antigen bundle aws
+antigen bundle brew
+antigen bundle command-not-found
 antigen bundle docker
 antigen bundle docker-compose
+antigen bundle extract
+antigen bundle fzf
+antigen bundle git
+antigen bundle gradle
+antigen bundle httpie
 antigen bundle jenv
+antigen bundle pip
+antigen bundle safe-paste
+antigen bundle tig
+
 [[ -z "$ZSH_CACHE_DIR" ]] || mkdir -p $ZSH_CACHE_DIR/completions
-antigen bundle kubectl
-antigen bundle kubectx
+fpath=($ZSH_CACHE_DIR/completions $fpath)
+
+(( ${+commands[kubectl]} )) && antigen bundle kubectl
+(( ${+commands[kubectx]} )) && antigen bundle kubectx
 
 # Additional bundles
 antigen bundle zsh-users/zsh-autosuggestions
 antigen bundle zsh-users/zsh-completions
 antigen bundle desyncr/fast-syntax-highlighting
 antigen bundle ael-code/zsh-colored-man-pages
-antigen bundle rupa/z
+antigen bundle ajeetdsouza/zoxide --branch=main
+antigen bundle Dabz/kafka-zsh-completions
+
+get_os_bundle_name() {
+    case "$OSTYPE" in
+        darwin*) echo "macos" ;;
+        linux*)
+            case "$(lsb_release -is)" in
+                ManjaroLinux* | ArcoLinux* | ArchLinux*) echo "archlinux" ;;
+                Ubuntu*) echo "ubuntu" ;;
+            esac
+            ;;
+    esac
+}
+
+os_bundle_name=$(get_os_bundle_name)
+
+[[ -n "$os_bundle_name" ]] && antigen bundle "$os_bundle_name"
 
 # Load the theme.
 antigen theme romkatv/powerlevel10k
 
 # Tell Antigen that you're done.
 antigen apply
-
-source $HOME/.zsh-custom/aliases.zsh
-

@@ -1,0 +1,34 @@
+# Set CLICOLOR if you want Ansi Colors in iTerm2
+export CLICOLOR=1
+
+if (( $+commands[nvim] )); then
+    export EDITOR=nvim
+else
+    export EDITOR=vim
+fi
+
+export LESS='--long-prompt --ignore-case --raw-control-chars'
+
+{{ if eq .chezmoi.os "darwin" -}}
+export _JAVA_HOME=$(/usr/libexec/java_home)
+{{ end -}}
+
+# fzf
+if (( $+commands[fzf] )); then
+    export FZF_DEFAULT_OPS="--extended"
+    if (( ${+commands[fd]} )); then
+        export FZF_DEFAULT_COMMAND="fd --type f"
+        export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    fi
+fi
+
+# pact
+PACT_PATH=/opt/pact/bin
+if [ -x $PACT_PATH ]; then
+    export PATH=$PATH:$PACT_PATH
+fi
+
+# krew
+if (( $+commands[kubectl-krew] )); then
+    export PATH="${PATH}:${HOME}/.krew/bin"
+fi

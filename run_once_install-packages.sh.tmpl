@@ -1,9 +1,13 @@
 #!/bin/sh
 
 {{ if eq .chezmoi.os "linux" -}}
-sudo apt install thefuck autojump
+sudo apt install autojump
 {{ else if eq .chezmoi.os "darwin" -}}
-brew install thefuck autojump
+brew bundle --file=- <<-EOS
+brew "autojump"
+brew "zoxide"
+brew "diff-so-fancy"
+EOS
 {{ end -}}
 
 curl -L git.io/antigen > ~/antigen.zsh
