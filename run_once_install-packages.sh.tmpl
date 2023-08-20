@@ -9,7 +9,7 @@ cask "font-jetbrains-mono-nerd-font"
 EOS
 {{ else if eq .chezmoi.os "linux" -}}
 {{ if eq .chezmoi.osRelease.idLike "arch" -}}
-sudo pacman -S \
+sudo pacman -S --needed \
   zoxide \
   diff-so-fancy \
   ttf-jetbrains-mono-nerd
