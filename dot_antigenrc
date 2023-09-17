@@ -11,6 +11,7 @@ antigen bundle asdf
 antigen bundle aws
 antigen bundle brew
 antigen bundle command-not-found
+antigen bundle direnv
 antigen bundle docker
 antigen bundle docker-compose
 antigen bundle extract
