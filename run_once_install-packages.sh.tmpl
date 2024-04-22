@@ -6,6 +6,7 @@ brew bundle --file=- <<-EOS
 brew "zoxide"
 brew "diff-so-fancy"
 brew "direnv"
+brew "tpm"
 cask "font-jetbrains-mono-nerd-font"
 EOS
 {{ else if eq .chezmoi.os "linux" -}}
@@ -14,7 +15,9 @@ sudo pacman -S --needed \
   zoxide \
   diff-so-fancy \
   direnv \
-  ttf-jetbrains-mono-nerd
+  ttf-jetbrains-mono-nerd 
+
+yay -S --needed tmux-plugin-manager
 {{ end -}}
 {{ end -}}
 
