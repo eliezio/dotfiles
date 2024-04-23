@@ -52,6 +52,7 @@ antigen bundle desyncr/fast-syntax-highlighting
 antigen bundle ael-code/zsh-colored-man-pages
 antigen bundle ajeetdsouza/zoxide --branch=main
 antigen bundle Dabz/kafka-zsh-completions
+antigen bundle lukechilds/zsh-nvm
 
 # Load the theme.
 antigen theme romkatv/powerlevel10k
