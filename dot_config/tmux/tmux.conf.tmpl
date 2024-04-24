@@ -1,21 +1,21 @@
-unbind r
-bind r source-file ~/.tmux.conf
+set-option -sa terminal-overrides ",xterm*:Tc"
 
+unbind C-s
 set -g prefix C-s
 
-set -g escape-time 0         # zero-out escape time delay
-set -g history-limit 1000000 # increase history size (from 2,000)
 set -g mouse on
+set-option -g status-position top
 
-bind-key h select-pane -L
-bind-key j select-pane -D
-bind-key k select-pane -U
-bind-key l select-pane -R
+set -g base-index 1
+set -g pane-base-index 1
+set-window-option -g pane-base-index 1
+set-option -g renumber-windows on
+
+# Open panes in current directory
+bind '"' split-window -v -c "#{pane_current_path}"
+bind % split-window -h -c "#{pane_current_path}"
 
 # Some Byobu keybindings
-bind-key -n F2 new-window -c "#{pane_current_path}" \; rename-window "-"
-bind-key -n C-F2 display-panes \; split-window -h -c "#{pane_current_path}"
-bind-key -n S-F2 display-panes \; split-window -v -c "#{pane_current_path}"
 bind-key -n C-S-F2 new-session \; rename-window "-"
 bind-key -n F3 previous-window
 bind-key -n F4 next-window
@@ -34,9 +34,9 @@ bind-key -n F8 command-prompt -p "(rename-window) " "rename-window '%%'"
 bind-key -n C-F8 command-prompt -p "(rename-session) " "rename-session '%%'"
 bind-key -n S-F11 resize-pane -Z
 
-set-option -g status-position top
-
 set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'christoomey/vim-tmux-navigator'
 set -g @plugin 'catppuccin/tmux'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'xamut/tmux-weather'
@@ -61,7 +61,7 @@ set -g @catppuccin_status_right_separator ""
 set -g @catppuccin_status_fill "all"
 set -g @catppuccin_status_connect_separator "no"
 
-set -g @catppuccin_directory_text "#{s|^$HOME|~|:pane_current_path}"
+#set -g @catppuccin_directory_text "#{s|^$HOME|~|:pane_current_path}"
 
 {{ if eq .chezmoi.os "darwin" -}}
 run '/opt/homebrew/share/tpm/tpm'
