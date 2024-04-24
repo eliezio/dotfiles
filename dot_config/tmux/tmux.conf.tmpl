@@ -4,12 +4,31 @@ unbind C-s
 set -g prefix C-s
 
 set -g mouse on
-set-option -g status-position top
 
-set -g base-index 1
-set -g pane-base-index 1
-set-window-option -g pane-base-index 1
-set-option -g renumber-windows on
+set -g base-index 1              # start indexing windows at 1 instead of 0
+set -g detach-on-destroy off     # don't exit from tmux when closing a session
+set -g history-limit 1000000     # increase history size (from 2,000)
+set -g renumber-windows on       # renumber all windows when any window is closed
+set -g set-clipboard on          # use system clipboard
+set -g status-position top       # macOS / darwin style
+set -g default-terminal "${TERM}"
+setw -g mode-keys vi
+setw -g pane-base-index 1
+set -g pane-active-border-style 'fg=magenta,bg=default'
+set -g pane-border-style 'fg=brightblack,bg=default'
+
+set -g @fzf-url-fzf-options '-p 60%,30% --prompt="   " --border-label=" Open URL "'
+set -g @fzf-url-history-limit '2000'
+
+set -g @plugin 'tmux-plugins/tpm'
+set -g @plugin 'tmux-plugins/tmux-sensible'
+set -g @plugin 'christoomey/vim-tmux-navigator'
+set -g @plugin 'catppuccin/tmux'
+set -g @plugin 'xamut/tmux-weather'
+set -g @plugin 'sainnhe/tmux-fzf'
+set -g @plugin 'wfxr/tmux-fzf-url'
+set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @plugin 'tmux-plugins/tmux-continuum'
 
 # Open panes in current directory
 bind '"' split-window -v -c "#{pane_current_path}"
@@ -34,28 +53,19 @@ bind-key -n F8 command-prompt -p "(rename-window) " "rename-window '%%'"
 bind-key -n C-F8 command-prompt -p "(rename-session) " "rename-session '%%'"
 bind-key -n S-F11 resize-pane -Z
 
-set -g @plugin 'tmux-plugins/tpm'
-set -g @plugin 'tmux-plugins/tmux-sensible'
-set -g @plugin 'christoomey/vim-tmux-navigator'
-set -g @plugin 'catppuccin/tmux'
-set -g @plugin 'sainnhe/tmux-fzf'
-set -g @plugin 'xamut/tmux-weather'
-set -g @plugin 'tmux-plugins/tmux-resurrect'
+set -g @continuum-restore 'on'
+set -g @resurrect-strategy-nvim 'session'
 
 set -g @catppuccin_window_left_separator ""
 set -g @catppuccin_window_right_separator " "
 set -g @catppuccin_window_middle_separator " █"
 set -g @catppuccin_window_number_position "right"
-
 set -g @catppuccin_window_default_fill "number"
 set -g @catppuccin_window_default_text "#W"
-
 set -g @catppuccin_window_current_fill "number"
-set -g @catppuccin_window_current_text "#W"
-
-set -g @catppuccin_status_modules_left "session"
-
+set -g @catppuccin_window_current_text "#W#{?window_zoomed_flag,(),}"
 set -g @catppuccin_status_modules_right "weather date_time"
+set -g @catppuccin_status_modules_left "session"
 set -g @catppuccin_status_left_separator  " "
 set -g @catppuccin_status_right_separator ""
 set -g @catppuccin_status_fill "all"
