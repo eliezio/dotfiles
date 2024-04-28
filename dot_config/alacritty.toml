@@ -1,0 +1,14 @@
+import = ["~/.config/alacritty/themes/catppuccin-mocha.toml"]
+
+[font]
+size = 22
+
+[font.normal]
+family = "JetBrainsMonoNL Nerd Font Mono"
+
+[window]
+decorations = "none"
+
+[window.padding]
+x = 7
+y = 0
