@@ -1,7 +1,15 @@
 import = ["~/.config/alacritty/themes/catppuccin-mocha.toml"]
 
+[shell]
+program = "/bin/zsh"
+args = ["--login", "-c", "tmux"]
+
 [font]
-size = 22
+{{ if eq .chezmoi.os "linux" -}}
+size = 15
+{{ else if eq .chezmoi.os "darwin" -}}
+size = 18
+{{ end -}}
 
 [font.normal]
 family = "JetBrainsMonoNL Nerd Font Mono"
