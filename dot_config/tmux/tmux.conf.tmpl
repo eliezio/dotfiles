@@ -23,7 +23,7 @@ set -g @fzf-url-history-limit '2000'
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'catppuccin/tmux'
-set -g @plugin 'xamut/tmux-weather'
+#set -g @plugin 'xamut/tmux-weather'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
@@ -49,8 +49,8 @@ bind-key -n M-PPage copy-mode \; send-keys PPage
 set -g @continuum-restore 'on'
 set -g @resurrect-strategy-nvim 'session'
 
-set -g @tmux-weather-location 'Athlone'
-set -g @tmux-weather-format '%c+%f+%w+%s+%S'
+#set -g @tmux-weather-location 'Athlone'
+#set -g @tmux-weather-format '%c+%f+%w+%s+%S'
 
 set -g @catppuccin_window_left_separator ""
 set -g @catppuccin_window_right_separator " "
@@ -60,7 +60,7 @@ set -g @catppuccin_window_default_fill "number"
 set -g @catppuccin_window_default_text "#W"
 set -g @catppuccin_window_current_fill "number"
 set -g @catppuccin_window_current_text "#W#{?window_zoomed_flag,(),}"
-set -g @catppuccin_status_modules_right "weather date_time"
+set -g @catppuccin_status_modules_right "date_time"
 set -g @catppuccin_status_modules_left "session"
 set -g @catppuccin_status_left_separator  " "
 set -g @catppuccin_status_right_separator ""
