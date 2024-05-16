@@ -16,17 +16,10 @@ alias pbpaste='xclip -sel cl -o'
 alias cm=chezmoi
 
 # eza
-if (( $+commands[eza] )); then
-  alias ls='eza -l -g --icons'
-elif (( $+commands[lsd] )); then
-  alias ls=lsd
-fi
+alias ls='eza -l -g --icons'
 
 # neovim
-if (( $+commands[nvim] )); then
-    alias vim=nvim
-    export EDITOR=nvim
-fi
+alias vim=nvim
 
 # Terraform
 if (( $+commands[terraform] )); then
@@ -36,3 +29,5 @@ if (( $+commands[terraform] )); then
     alias tfa='tf apply'
     alias tfaa='tf apply -auto-approve'
 fi
+
+# vim:ft=zsh

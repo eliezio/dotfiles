@@ -3,24 +3,53 @@
 {{ if eq .chezmoi.os "darwin" -}}
 # sample Brewfile: https://github.com/Homebrew/homebrew-bundle#usage
 brew bundle --file=- <<-EOS
-brew "zoxide"
+brew "antigen"
+brew "bat"
 brew "diff-so-fancy"
 brew "direnv"
+brew "eza"
+brew "fd"
+brew "fzf"
+brew "jenv"
+brew "lazygit"
+brew "neovim"
+brew "ripgrep"
+brew "tig"
 brew "tmux"
+brew "topgrade"
 brew "tpm"
+brew "zoxide"
 cask "font-jetbrains-mono-nerd-font"
 EOS
 {{ else if eq .chezmoi.os "linux" -}}
 {{ if eq .chezmoi.osRelease.idLike "arch" -}}
 sudo pacman -S --needed \
-  zoxide \
+  bat \
   diff-so-fancy \
   direnv \
+  eza \
+  fd \
+  fzf \
+  jenv \
+  lazygit \
+  neovim \
+  ripgrep \
+  tig \
+  tmux \
+  topgrade \
   ttf-jetbrains-mono-nerd \
-  tmux
+  yay \
+  zoxide
 
-yay -S --needed tmux-plugin-manager
+yay -S --needed \
+  antigen \
+  tmux-plugin-manager
+
+# Tipically missing dependencies on AUR builder
+sudo pacman -S --needed \
+  fakeroot \
+  make \
+  patch
+
 {{ end -}}
 {{ end -}}
-
-curl -L git.io/antigen > ~/antigen.zsh
