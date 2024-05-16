@@ -19,11 +19,13 @@ brew "tmux"
 brew "topgrade"
 brew "tpm"
 brew "zoxide"
+cask "alacritty"
 cask "font-jetbrains-mono-nerd-font"
 EOS
 {{ else if eq .chezmoi.os "linux" -}}
 {{ if eq .chezmoi.osRelease.idLike "arch" -}}
 sudo pacman -S --needed \
+  alacritty \
   bat \
   diff-so-fancy \
   direnv \
