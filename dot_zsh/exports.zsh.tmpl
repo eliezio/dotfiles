@@ -32,6 +32,9 @@ if [ -x $HOME/go ]; then
     export PATH=$PATH:$GOBIN
 fi
 
+# homebrew
+export HOMEBREW_NO_ENV_HINTS=1
+
 # pact
 PACT_PATH=/opt/pact/bin
 if [ -x $PACT_PATH ]; then
