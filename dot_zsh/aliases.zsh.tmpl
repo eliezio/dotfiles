@@ -18,6 +18,10 @@ alias cm=chezmoi
 # eza
 alias ls='eza -l -g --icons'
 
+if (( $+commands[lazygit] )); then
+    alias lg=lazygit
+fi
+
 # neovim
 alias vim=nvim
 
