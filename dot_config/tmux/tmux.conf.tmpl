@@ -24,6 +24,7 @@ set -g @fzf-url-history-limit '2000'
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'catppuccin/tmux'
+set -g @plugin 'olimorris/tmux-pomodoro-plus'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
@@ -54,7 +55,7 @@ set -g @catppuccin_window_text "#W"
 set -g @catppuccin_window_flags "icon"
 set -g @catppuccin_window_current_text "#W"
 set -g status-left "#{E:@catppuccin_status_session}"
-set -g status-right "#{E:@catppuccin_status_date_time}"
+set -gF status-right "#{E:@catppuccin_status_pomodoro_plus}#{E:@catppuccin_status_date_time}"
 set -g @catppuccin_date_time_text "%d %b %H:%M"
 
 {{ if eq .chezmoi.os "darwin" -}}
