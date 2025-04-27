@@ -24,7 +24,6 @@ set -g @fzf-url-history-limit '2000'
 set -g @plugin 'tmux-plugins/tpm'
 set -g @plugin 'tmux-plugins/tmux-sensible'
 set -g @plugin 'catppuccin/tmux'
-#set -g @plugin 'xamut/tmux-weather'
 set -g @plugin 'sainnhe/tmux-fzf'
 set -g @plugin 'wfxr/tmux-fzf-url'
 set -g @plugin 'tmux-plugins/tmux-resurrect'
@@ -50,28 +49,13 @@ bind-key -n M-PPage copy-mode \; send-keys PPage
 set -g @continuum-restore 'on'
 set -g @resurrect-strategy-nvim 'session'
 
-#set -g @tmux-weather-location 'Athlone'
-#set -g @tmux-weather-format '%c+%f+%w+%s+%S'
-
-set -g @catppuccin_window_left_separator ""
-set -g @catppuccin_window_right_separator " "
-set -g @catppuccin_window_middle_separator "█ "
-set -g @catppuccin_window_number_position "left"
-set -g @catppuccin_window_default_fill "number"
-set -g @catppuccin_window_default_text "#W"
-set -g @catppuccin_window_current_fill "number"
-set -g @catppuccin_window_current_text "#W#{?window_zoomed_flag,(),}"
-set -g @catppuccin_status_modules_right "pomo date_time"
-set -g @catppuccin_status_modules_left "session"
-set -g @catppuccin_status_left_separator  ""
-set -g @catppuccin_status_right_separator " "
-set -g @catppuccin_status_fill "all"
-set -g @catppuccin_status_connect_separator "no"
+set -g @catppuccin_window_status_style "rounded"
+set -g @catppuccin_window_text "#W"
+set -g @catppuccin_window_flags "icon"
+set -g @catppuccin_window_current_text "#W"
+set -g status-left "#{E:@catppuccin_status_session}"
+set -g status-right "#{E:@catppuccin_status_date_time}"
 set -g @catppuccin_date_time_text "%d %b %H:%M"
-
-set -g @catppuccin_custom_plugin_dir "~/.config/tmux/custom/catppuccin"
-
-#set -g @catppuccin_directory_text "#{s|^$HOME|~|:pane_current_path}"
 
 {{ if eq .chezmoi.os "darwin" -}}
 run '/opt/homebrew/share/tpm/tpm'
