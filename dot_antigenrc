@@ -28,6 +28,7 @@ antigen bundle tig
 fpath=($ZSH_CACHE_DIR/completions $fpath)
 
 (( ${+commands[aws]} ))     && antigen bundle aws
+(( ${+commands[gcloud]} ))  && antigen bundle gcloud
 (( ${+commands[kubectl]} )) && antigen bundle kubectl
 (( ${+commands[kubectx]} )) && antigen bundle kubectx
 
