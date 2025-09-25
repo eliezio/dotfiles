@@ -46,4 +46,8 @@ if (( $+commands[kubectl-krew] )); then
     export PATH="$PATH:$HOME/.krew/bin"
 fi
 
+# node.js version management (for zsh-nvm)
+export NODE_VERSIONS="$NVM_DIR/versions/node"
+export NODE_VERSION_PREFIX="v"
+
 # vim:ft=zsh
