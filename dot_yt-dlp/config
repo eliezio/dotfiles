@@ -1,0 +1,10 @@
+--output ~/Videos/%(title)s [%(id)s].%(ext)s
+--format "bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4]"
+--merge-output-format mp4
+--embed-chapters
+--embed-metadata
+--embed-thumbnail
+--write-subs
+--write-auto-subs
+--embed-subs
+--sub-langs "en,en-US,pt,pt-BR"
