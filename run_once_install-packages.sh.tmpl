@@ -21,6 +21,7 @@ brew "tpm"
 brew "zoxide"
 cask "alacritty"
 cask "font-jetbrains-mono-nerd-font"
+cask "font-fira-mono-nerd-font"
 EOS
 {{ else if eq .chezmoi.os "linux" -}}
 {{ if eq .chezmoi.osRelease.idLike "arch" -}}
@@ -35,6 +36,7 @@ sudo pacman -S --needed \
   jenv \
   lazygit \
   neovim \
+  otf-firamono-nerd \
   ripgrep \
   tig \
   tmux \

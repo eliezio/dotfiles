@@ -9,11 +9,11 @@ args = ["--login", "-c", "tmux"]
 TERM = "xterm-256color"
 
 [font]
-normal.family = "JetBrainsMonoNL Nerd Font Mono"
+normal.family = "FiraMono Nerd Font"
 {{ if eq .chezmoi.os "linux" -}}
 size = 15
 {{ else if eq .chezmoi.os "darwin" -}}
-size = 24
+size = 23
 {{ end -}}
 
 [window]
