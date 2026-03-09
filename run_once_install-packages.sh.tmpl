@@ -4,6 +4,7 @@
 # sample Brewfile: https://github.com/Homebrew/homebrew-bundle#usage
 brew bundle --file=- <<-EOS
 brew "antigen"
+brew "atuin"
 brew "bat"
 brew "diff-so-fancy"
 brew "direnv"
@@ -27,6 +28,7 @@ EOS
 {{ if eq .chezmoi.osRelease.idLike "arch" -}}
 sudo pacman -S --needed \
   alacritty \
+  atuin \
   bat \
   diff-so-fancy \
   direnv \
