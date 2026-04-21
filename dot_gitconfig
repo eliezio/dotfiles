@@ -1,0 +1,48 @@
+    [user]
+      name = {{ .gitName }}
+      email = {{ .gitEmail }}
+    [credential]
+      helper = cache --timeout=604800
+    [credential "https://github.com"]
+      helper = !gh auth git-credential
+    [http]
+      postBuffer = 20971520
+    [init]
+      defaultBranch = master
+    [diff]
+      renames = true
+      colorMoved = true
+    [fetch]
+      prune = true
+    [push]
+      autoSetupRemote = true
+      followTags = true
+    [pull]
+      rebase = true
+    [pager]
+      diff = diffnav
+      show = diffnav
+    [delta]
+      dark = true
+      side-by-side = true
+      line-numbers = true
+      navigate = true
+
+      syntax-theme = "Dracula"
+
+      plus-style = "syntax #238636"        # GitHub-style green for additions
+      minus-style = "syntax #da3633"       # GitHub-style red for deletions
+      plus-emph-style = "syntax #39d353"   # Brighter green for inline changes
+      minus-emph-style = "syntax #f85149"  # Brighter red for inline changes
+
+      file-style = "bold #c9d1d9"
+      file-decoration-style = "#c9d1d9 ul"
+      hunk-header-style = "bold #58a6ff"
+      hunk-header-decoration-style = "#21262d box"
+    [filter "lfs"]
+      required = true
+      clean = git-lfs clean -- %f
+      smudge = git-lfs smudge -- %f
+      process = git-lfs filter-process
+    [remote "origin"]
+      tagOpt = --tags

@@ -1,0 +1,177 @@
+#!/bin/bash
+set -euo pipefail
+
+USER_NAME=$(whoami)
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+CERTS_SOURCE_DIR="${CERTS_SOURCE_DIR:-$SCRIPT_DIR/certs}"
+CERTS_TARGET_DIR="/usr/local/share/ca-certificates"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+log_step() {
+  echo -e "${BLUE}➜${NC} $1"
+}
+
+log_success() {
+  echo -e "${GREEN}✓${NC} $1"
+}
+
+log_error() {
+  echo -e "${RED}✗${NC} $1"
+}
+
+log_info() {
+  echo -e "${YELLOW}ℹ${NC} $1"
+}
+
+spinner_pid=
+spinner_chars='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+
+start_spinner() {
+  local msg="$1"
+  (
+    local i=0
+    while true; do
+      printf "\r${CYAN}${spinner_chars:$i:1}${NC} $msg"
+      i=$(( (i + 1) % ${#spinner_chars} ))
+      sleep 0.1
+    done
+  ) &
+  spinner_pid=$!
+}
+
+stop_spinner() {
+  kill $spinner_pid 2>/dev/null || true
+  wait $spinner_pid 2>/dev/null || true
+  printf "\r"
+}
+
+run_step() {
+  local msg="$1"
+  shift
+  start_spinner "$msg"
+  if "$@"; then
+    stop_spinner
+    log_success "$msg"
+  else
+    stop_spinner
+    log_error "$msg"
+    return 1
+  fi
+}
+
+install_system_certs() {
+  local changed=0
+
+  shopt -s nullglob
+  local certs=("$CERTS_SOURCE_DIR"/*.crt "$CERTS_SOURCE_DIR"/*.pem)
+  shopt -u nullglob
+
+  if [ "${#certs[@]}" -eq 0 ]; then
+    log_info "No cert files found in $CERTS_SOURCE_DIR; skipping system CA install."
+    return 0
+  fi
+
+  sudo mkdir -p "$CERTS_TARGET_DIR"
+
+  for cert in "${certs[@]}"; do
+    local base target
+    base="$(basename "$cert")"
+    target="$CERTS_TARGET_DIR/${base%.*}.crt"
+
+    if sudo test -f "$target" && sudo cmp -s "$cert" "$target"; then
+      continue
+    fi
+
+    sudo install -m 0644 "$cert" "$target"
+    changed=1
+  done
+
+  if [ "$changed" -eq 1 ]; then
+    log_info "Updating system CA certificates..."
+    sudo update-ca-certificates
+    log_success "System CA certificates updated"
+  else
+    log_success "System CA certificates already up to date"
+  fi
+}
+
+ensure_nix_feature() {
+  local nix_conf="$HOME/.config/nix/nix.conf"
+  mkdir -p "$(dirname "$nix_conf")"
+  touch "$nix_conf"
+
+  if ! grep -Eq '^experimental-features\s*=.*\bnix-command\b' "$nix_conf"; then
+    echo "experimental-features = nix-command" >> "$nix_conf"
+  fi
+}
+
+install_tools() {
+{{ if eq .chezmoi.os "darwin" -}}
+  # sample Brewfile: https://github.com/Homebrew/homebrew-bundle#usage
+  brew bundle --file=- <<-EOS
+    brew "antigen"
+    brew "atuin"
+    brew "bat"
+    brew "fd"
+    brew "fzf"
+    brew "lazygit"
+    brew "mise"
+    brew "neovim"
+    brew "ripgrep"
+    brew "tig"
+    brew "tmux"
+    brew "topgrade"
+    brew "tpm"
+    brew "zinit"
+    brew "zoxide"
+    cask "alacritty"
+    cask "font-jetbrains-mono-nerd-font"
+    cask "font-fira-mono-nerd-font"
+EOS
+{{ else if eq .chezmoi.os "linux" -}}
+{{ if eq .chezmoi.osRelease.idLike "arch" -}}
+  sudo pacman -S --needed \
+    alacritty \
+    atuin \
+    bat \
+    fd \
+    fzf \
+    lazygit \
+    neovim \
+    otf-firamono-nerd \
+    ripgrep \
+    tig \
+    tmux \
+    ttf-jetbrains-mono-nerd \
+    yay \
+    zoxide
+
+  yay -S --needed --noconfirm \
+    tmux-plugin-manager \
+    topgrade \
+    zinit
+
+  # Tipically missing dependencies on AUR builders
+  sudo pacman -S --needed \
+    fakeroot \
+    make \
+    patch
+
+{{ else if eq .chezmoi.osRelease.idLike "debian" -}}
+  sudo apt-get update
+  sudo apt-get install --yes --no-install-recommends \
+        ca-certificates \
+        curl \
+        xz-utils \
+        zsh
+
+  ensure_nix_feature
+{{ end -}}
+{{ end -}}
+}

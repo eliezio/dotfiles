@@ -17,8 +17,13 @@ alias pbpaste='xclip -sel cl -o'
 # chezmoi
 alias cm=chezmoi
 
-# eza
-alias ls='eza -l -g --icons'
+# lsd
+alias ls='lsd'
+alias la='lsd -A'
+alias ll='lsd -l'
+alias lla='lsd -lA'
+alias llt='lsd -l --tree'
+alias lt='lsd --tree'
 
 if (( $+commands[lazygit] )); then
     alias lg=lazygit

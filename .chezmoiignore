@@ -1,1 +1,4 @@
 **/lazy-lock.json
+user.yaml
+decrypt-ssh-key.sh
+secrets.yaml

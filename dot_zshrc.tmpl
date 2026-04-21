@@ -11,9 +11,10 @@ if [[ -e ~/.platformrc ]]; then
 fi
 
 {{ if eq .chezmoi.os "darwin" -}}
-source /opt/homebrew/share/antigen/antigen.zsh
+source /opt/homebrew/opt/zinit/zinit.zsh
 {{ else if eq .chezmoi.os "linux" -}}
-source /usr/share/zsh/share/antigen.zsh
+source /usr/share/zinit/zinit.zsh
+source ~/.nix-profile/share/zinit/zinit.zsh
 {{ end -}}
 antigen init ~/.antigenrc
 
@@ -21,14 +22,15 @@ antigen init ~/.antigenrc
 source ~/.zsh/aliases.zsh
 source ~/.zsh/exports.zsh
 source ~/.zsh/history.zsh
-if [[ -e "$HOME/.zsh/local.zsh" ]]; then
+if [[ -e ~/.zsh/local.zsh ]]; then
   source ~/.zsh/local.zsh
 fi
 
 source ~/.p10k.zsh
 
-if [[ -z "${SSH_CONNECTION}" && -n "${XDG_RUNTIME_DIR}" ]]; then
-    export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
-fi
+source ~/.zsh/modules/atuin.zsh
+source ~/.zsh/modules/lazygit.zsh
+source ~/.zsh/modules/mise.zsh
+source ~/.zsh/modules/ssh-agent.zsh
 
 # vim:ft=zsh
