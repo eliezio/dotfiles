@@ -1,34 +1,59 @@
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+{{- if eq .os_like "debian" }}
+if [[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
+  source "$HOME/.nix-profile/etc/profile.d/nix.sh"
 fi
+{{ end }}
+ZSH_PLUGINS=~/.zsh-plugins
+OMZ=$ZSH_PLUGINS/oh-my-zsh
+ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"
+mkdir -p "$ZSH_CACHE_DIR/completions"
 
-# Platform specific customizations
-if [[ -e ~/.platformrc ]]; then
-    source ~/.platformrc
-fi
+# fpath additions must precede compinit so _* completion files are picked up
+fpath+=($ZSH_PLUGINS/zsh-completions/src)
+{{- if eq .os_like "macos" }}
+fpath+=($OMZ/plugins/brew)
+{{- else if eq .os_like "arch" }}
+fpath+=($OMZ/plugins/archlinux)
+{{- end }}
+{{- range .omz_plugins }}
+fpath+=($OMZ/plugins/{{ . }})
+{{- end }}
 
-{{ if eq .chezmoi.os "darwin" -}}
-source /opt/homebrew/share/antigen/antigen.zsh
-{{ else if eq .chezmoi.os "linux" -}}
-source /usr/share/zsh/share/antigen.zsh
+# Initialize completion system (defines compdef, used by OMZ libs/plugins)
+autoload -Uz compinit
+compinit -d "$ZSH_CACHE_DIR/.zcompdump"
+
+# OMZ libraries
+{{- range .omz_libs }}
+source $OMZ/lib/{{ . }}.zsh
+{{- end }}
+
+# OMZ plugins
+{{ if eq .os_like "macos" -}}
+source $OMZ/plugins/brew/brew.plugin.zsh
+{{ else if eq .os_like "arch" -}}
+source $OMZ/plugins/archlinux/archlinux.plugin.zsh
 {{ end -}}
-antigen init ~/.antigenrc
+{{- range .omz_plugins }}
+source $OMZ/plugins/{{ . }}/{{ . }}.plugin.zsh
+{{- end }}
 
-# Source all the configs
-source ~/.zsh/aliases.zsh
-source ~/.zsh/exports.zsh
-source ~/.zsh/history.zsh
-if [[ -e "$HOME/.zsh/local.zsh" ]]; then
+# Third-party plugins (load order set in .chezmoidata/zsh.yaml)
+{{- range .zsh_plugins }}
+{{- if hasKey . "main" }}
+source $ZSH_PLUGINS/{{ .name }}/{{ .main }}
+{{- end }}
+{{- end }}
+
+# Additional integrations (auto-discovered from dot_zsh/integrations at apply time)
+{{- range (glob (printf "%s/dot_zsh/integrations/*.zsh" .chezmoi.sourceDir)) }}
+source ~/.zsh/integrations/{{ base . }}
+{{- end }}
+
+if [[ -e ~/.zsh/local.zsh ]]; then
   source ~/.zsh/local.zsh
 fi
 
-source ~/.p10k.zsh
-
-if [[ -z "${SSH_CONNECTION}" && -n "${XDG_RUNTIME_DIR}" ]]; then
-    export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
-fi
+bindkey -e  # force emacs keybindings (Ubuntu's /etc/zsh/zshrc sets vi mode)
 
 # vim:ft=zsh

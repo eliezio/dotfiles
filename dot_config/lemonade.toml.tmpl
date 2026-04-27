@@ -1,0 +1,5 @@
+{{- if .is_container -}}
+host = 'host.docker.internal'
+{{- else -}}
+host = 'localhost'
+{{- end }}

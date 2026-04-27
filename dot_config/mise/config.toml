@@ -1,0 +1,5 @@
+[settings]
+experimental = true
+
+[hooks]
+postinstall = "~/.config/mise/hooks/postinstall.sh"

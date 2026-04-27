@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Shared logging helpers (color vars, log_*).
+{{ include "scripts/lib/log.sh" }}
+
+# ---------------------------------------------------------------------------
+# Package lists (generated from .chezmoidata/packages.yaml)
+# ---------------------------------------------------------------------------
+
+CLI_PKGS=(
+{{ range .packages.cli }}  {{ .name }}
+{{ end -}}
+)
+
+GUI_PKGS=(
+{{ range .packages.gui }}  {{ .name }}
+{{ end -}}
+)
+
+resolve_name() {
+  local canonical="$1"
+  local -n map="$2"
+  echo "${map[$canonical]:-$canonical}"
+}
+
+# Platform-specific installer: defines SYSTEM_PKGS / name maps and install_packages.
+{{ includeTemplate (printf "scripts/lib/%s/installer.sh" .os_like) . }}
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+install_system_certs() {
+  shopt -s nullglob
+  local certs=("$CERTS_SOURCE_DIR"/*.crt)
+  shopt -u nullglob
+
+  if [ "${#certs[@]}" -eq 0 ]; then
+    log_info "No .crt files found in $CERTS_SOURCE_DIR; skipping system CA install."
+    return 0
+  fi
+
+  # Detect distro convention: Arch/Fedora use update-ca-trust, Debian uses update-ca-certificates.
+  local target_dir update_cmd
+  if command -v update-ca-trust &>/dev/null; then
+    target_dir="/etc/ca-certificates/trust-source/anchors"
+    update_cmd=(update-ca-trust extract)
+  elif command -v update-ca-certificates &>/dev/null; then
+    target_dir="/usr/local/share/ca-certificates"
+    update_cmd=(update-ca-certificates)
+  else
+    log_error "No system CA update tool found (update-ca-trust or update-ca-certificates)"
+    return 1
+  fi
+
+  sudo mkdir -p "$target_dir"
+  sudo install -m 0644 "${certs[@]}" "$target_dir/"
+
+  log_info "Updating system CA certificates..."
+  sudo "${update_cmd[@]}"
+  log_success "System CA certificates updated"
+}
+
+set_default_shell() {
+  if [[ "$SHELL" == *"/zsh" ]]; then
+    log_info "Default shell already zsh"
+    return 0
+  fi
+  local zsh_path
+  zsh_path="$(grep -m1 '/zsh$' /etc/shells)"
+  sudo chsh -s "$zsh_path" "$(whoami)"
+  log_success "Default shell set to $zsh_path"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+if [ "$(uname -s)" = "Linux" ]; then
+  log_step "Install system certs"
+  install_system_certs
+fi
+
+if [[ $(type -t install_system_packages) == function ]]; then
+  log_step "Installing system packages..."
+  install_system_packages
+fi
+
+log_step "Install packages"
+install_packages
+
+log_step "Set default shell to zsh"
+set_default_shell
+
+log_success "Tool installation complete!"
+
+# vim: ft=bash

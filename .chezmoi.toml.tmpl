@@ -1,0 +1,16 @@
+[data]
+is_container = {{ or (ne (stat "/.dockerenv") nil) (ne (stat "/run/.containerenv") nil) (ne (env "container") "") }}
+{{ if eq .chezmoi.os "darwin" -}}
+os_like = "macos"
+{{ else if eq .chezmoi.os "linux" -}}
+{{ if (or (eq .chezmoi.osRelease.idLike "arch") (eq .chezmoi.osRelease.idLike "manjaro arch")) -}}
+os_like = "arch"
+{{ else if eq .chezmoi.osRelease.idLike "debian" -}}
+os_like = "debian"
+{{ else }}
+{{ fail (printf "Unsupported Linux Distribution: id='%s', idLike='%s'" .chezmoi.osRelease.id .chezmoi.osRelease.idLike) }}
+{{ end -}}
+{{ else }}
+{{ fail (printf "Unsupported os=%s" .chezmoi.os) }}
+{{ end -}}
+

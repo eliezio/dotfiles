@@ -1,0 +1,38 @@
+# .chezmoidata/zsh.yaml
+omz_version: e7aa0c56e68348afefdd6af4c5bdb314a2bd6640
+omz_libs:
+  - clipboard
+  - completion
+  - directories
+  - functions
+  - git
+  - history
+omz_plugins:
+  - aws
+  - docker
+  - docker-compose
+  - git
+  - kubectl
+  - mise
+  - mvn
+  - rust
+  - zoxide
+
+# Order matters: fast-syntax-highlighting must be last.
+# Entries without `main` are fpath-only (no source line emitted).
+zsh_plugins:
+  - name: zsh-completions
+    repo: zsh-users/zsh-completions
+    version: 0.36.0
+  - name: fzf-tab
+    repo: Aloxaf/fzf-tab
+    version: v1.3.0
+    main: fzf-tab.plugin.zsh
+  - name: zsh-autosuggestions
+    repo: zsh-users/zsh-autosuggestions
+    version: v0.7.1
+    main: zsh-autosuggestions.zsh
+  - name: fast-syntax-highlighting
+    repo: zdharma-continuum/fast-syntax-highlighting
+    version: v1.56
+    main: fast-syntax-highlighting.plugin.zsh

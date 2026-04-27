@@ -1,41 +1,35 @@
-set-option -sa terminal-overrides ",xterm*:Tc"
+# --- Terminal ---
+set -g default-terminal "tmux-256color"
+set -sa terminal-overrides ',xterm*:Tc'
+set -g set-clipboard on          # use system clipboard
 
-unbind C-s
+# --- General ---
+unbind C-b
 set -g prefix C-s
-
+bind C-s send-prefix
 set -g mouse on
-
 set -g base-index 1              # start indexing windows at 1 instead of 0
 set -g detach-on-destroy off     # don't exit from tmux when closing a session
+set -s escape-time 10            # reduce delay after Escape (default 500ms)
 set -g history-limit 20000       # increase history size (from 2,000)
 set -g renumber-windows on       # renumber all windows when any window is closed
-set -g set-clipboard on          # use system clipboard
-set -g status-position top       # macOS / darwin style
-set -g default-terminal "${TERM}"
+set -g status-interval 10
 setw -g mode-keys vi
 setw -g pane-base-index 1
+
+# --- Visual ---
+set -g status-position top       # macOS / darwin style
 set -g pane-active-border-style 'fg=magenta,bg=default'
 set -g pane-border-style 'fg=brightblack,bg=default'
-set -g status-interval 10
+set -g pane-border-format "#{pane_index} #{s|$HOME|~|:pane_current_path}"
+set-hook -g -w pane-focus-in "set-option -Fw pane-border-status '#{?#{e|>:#{window_panes},1},top,off}'"
 
-set -g @fzf-url-fzf-options '-p 60%,30% --prompt="   " --border-label=" Open URL "'
-set -g @fzf-url-history-limit '2000'
-
-set -g @plugin 'tmux-plugins/tpm'
-set -g @plugin 'tmux-plugins/tmux-sensible'
-set -g @plugin 'catppuccin/tmux'
-set -g @plugin 'olimorris/tmux-pomodoro-plus'
-set -g @plugin 'sainnhe/tmux-fzf'
-set -g @plugin 'wfxr/tmux-fzf-url'
-set -g @plugin 'tmux-plugins/tmux-resurrect'
-set -g @plugin 'tmux-plugins/tmux-continuum'
-set -g @plugin 'tmux-plugins/tmux-yank'
-
+# --- Key Bindings ---
 # Open panes in current directory
 bind '"' split-window -v -c "#{pane_current_path}"
 bind % split-window -h -c "#{pane_current_path}"
 
-# Some Byobu keybindings
+# Byobu-style navigation
 bind-key -n M-Left previous-window
 bind-key -n M-Right next-window
 bind-key -n M-Up switch-client -p
@@ -47,21 +41,33 @@ bind-key -n S-Down select-pane -D
 bind-key -n M-NPage copy-mode \; send-keys NPage
 bind-key -n M-PPage copy-mode \; send-keys PPage
 
+# --- Plugin Options ---
+# resurrect / continuum
 set -g @continuum-restore 'on'
 set -g @resurrect-strategy-nvim 'session'
+set -g @resurrect-save 'S'              # default C-s collides with our prefix passthrough
+set -g @resurrect-restore 'L'           # 'R' is taken for reload-conf
 
+# fzf-url
+set -g @fzf-url-fzf-options '-p 60%,30% --prompt="   " --border-label=" Open URL "'
+set -g @fzf-url-history-limit '2000'
+
+# catppuccin
 set -g @catppuccin_window_status_style "rounded"
 set -g @catppuccin_window_text "#W"
 set -g @catppuccin_window_flags "icon"
 set -g @catppuccin_window_current_text "#W"
-set -g status-left "#{E:@catppuccin_status_session}"
-set -gF status-right "#{E:@catppuccin_status_pomodoro_plus}#{E:@catppuccin_status_date_time}"
 set -g @catppuccin_date_time_text "%d %b %H:%M"
 
-{{ if eq .chezmoi.os "darwin" -}}
-run '/opt/homebrew/share/tpm/tpm'
-{{ else }}
-run '/usr/share/tmux-plugin-manager/tpm'
-{{ end -}}
+# --- Plugins ---
+{{ range .tmux_plugins -}}
+{{- $plugin_name := .name -}}
+{{- $entry := (get . "script") | default (print .name ".tmux") -}}
+run-shell ~/.config/tmux/plugins/{{ $plugin_name }}/{{ $entry }}
+{{ end }}
+
+# --- Status Line ---
+set -g status-left "#{E:@catppuccin_status_session}"
+set -gF status-right "#{E:@catppuccin_status_pomodoro_plus}#{E:@catppuccin_status_date_time}"
 
 # vim:ft=tmux

@@ -1,0 +1,15 @@
+[".zsh-plugins/oh-my-zsh"]
+    type = "archive"
+    url = "https://github.com/ohmyzsh/ohmyzsh/archive/{{ .omz_version }}.tar.gz"
+    exact = true
+    stripComponents = 1
+
+{{- range .zsh_plugins }}
+[".zsh-plugins/{{ .name }}"]
+    type = "archive"
+    url = "https://github.com/{{ .repo }}/archive/{{ .version }}.tar.gz"
+    exact = true
+    stripComponents = 1
+{{- end }}
+
+# vim: ft=gotmpl

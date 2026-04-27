@@ -1,0 +1,3 @@
+[env]
+COMPOSE_FILE = "compose.mitm.yaml"
+COMPOSE_REMOVE_ORPHANS = "true"

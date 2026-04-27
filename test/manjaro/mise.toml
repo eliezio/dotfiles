@@ -1,0 +1,4 @@
+[env]
+DOCKER_DEFAULT_PLATFORM = "linux/amd64"
+COMPOSE_FILE = "compose.mitm.yaml"
+COMPOSE_REMOVE_ORPHANS = "true"

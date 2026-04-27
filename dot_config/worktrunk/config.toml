@@ -1,0 +1,5 @@
+worktree-path = "{{ repo_path }}/../{{ branch }}"
+skip-shell-integration-prompt = true
+
+[post-switch]
+tmux = "[ -n \"$TMUX\" ] && tmux rename-window {{ \"%.8s %.11s\" | format(remote_url | split(\"/\") | last, branch | replace(\"feature/\", \"\") | sanitize) }}"
