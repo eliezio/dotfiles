@@ -1,0 +1,15 @@
+services:
+  dotfiles2:
+    build: .
+    environment:
+      USER: manjaro
+    volumes:
+      - type: bind
+        source: $PWD/../..
+        target: /home/manjaro/chezmoi
+      - type: bind
+        source: $HOME/.ssh
+        target: /home/manjaro/.ssh
+        read_only: true
+    command: [ "sleep", "infinity" ]
+    working_dir: /home/manjaro/chezmoi

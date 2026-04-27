@@ -1,0 +1,9 @@
+{{- range .tmux_plugins }}
+[".config/tmux/plugins/{{ .name }}"]
+    type = "archive"
+    url = "https://github.com/{{ .repo }}/archive/{{ .version }}.tar.gz"
+    exact = true
+    stripComponents = 1
+{{- end }}
+
+# vim: ft=gotmpl

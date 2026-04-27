@@ -1,0 +1,87 @@
+packages:
+  cli:
+    - name: atuin
+    - name: awscli
+      arch: aws-cli-v2
+      nix: awscli2
+    - name: bat
+    - name: chezmoi
+    - name: curlie
+    - name: delta
+      arch: git-delta
+    - name: diffnav
+    - name: fastfetch
+    - name: fd
+    - name: fzf
+    - name: gcc
+    - name: gh
+      arch: github-cli
+    - name: git
+    - name: httpie
+    - name: ijq
+    - name: jd
+      arch: jd-tool-bin
+      nix: jd-diff-patch
+    - name: jless
+    - name: jq
+    - name: k9s
+    - name: kubectl
+    - name: kubectx
+    - name: lazydocker
+    - name: lazygit
+    - name: lemonade
+      arch: lemonade-bin
+      brew: eliezio/homebrew-tap/lemonade
+    - name: less
+    - name: lsd
+    - name: luarocks
+    - name: mise
+    - name: neovim
+    - name: ripgrep
+    - name: sops
+    - name: starship
+    - name: tealdeer
+    - name: tig
+    - name: tmux
+    - name: topgrade
+    - name: tree-sitter-cli
+      nix: tree-sitter
+    - name: unzip
+    - name: wget
+    - name: worktrunk
+    - name: xmlstarlet
+    - name: yazi
+    - name: yq
+      nix: yq-go
+    #- name: yt-dlp  # excluded as it depends on deno, whose build significantly slows down installation
+    - name: zoxide
+  gui:
+    - name: alacritty
+      brew_cask: true
+    - name: font-jetbrains-mono-nerd-font
+      arch: ttf-jetbrains-mono-nerd
+      brew_cask: true
+    - name: font-fira-mono-nerd-font
+      arch: otf-firamono-nerd
+      brew_cask: true
+  system:
+    brew:
+    arch:
+      - fakeroot
+      - gcc
+      - make
+      - openssh
+      - unzip
+      - xclip
+      - yay
+      - zsh
+    debian:
+      - ca-certificates
+      - curl
+      - gcc
+      - make
+      - openssh-client
+      - unzip
+      - xclip
+      - xz-utils # needed to extract Nix tarball
+      - zsh

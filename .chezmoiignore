@@ -1,1 +1,14 @@
 **/lazy-lock.json
+user.yaml
+decrypt-ssh-key.sh
+secrets.yaml
+mise.toml
+apply.sh
+.cache/
+.claude/
+CLAUDE.md
+scripts/
+test/
+{{ if ne .os_like "arch" }}
+.makepkg.conf
+{{ end }}

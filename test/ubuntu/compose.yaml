@@ -1,0 +1,15 @@
+services:
+  dotfiles2:
+    build: .
+    environment:
+      USER: ubuntu
+    volumes:
+      - type: bind
+        source: $PWD/../..
+        target: /home/ubuntu/chezmoi
+      - type: bind
+        source: $HOME/.ssh
+        target: /home/ubuntu/.ssh
+        read_only: true
+    command: [ "sleep", "infinity" ]
+    working_dir: /home/ubuntu/chezmoi

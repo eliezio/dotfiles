@@ -1,0 +1,27 @@
+# .chezmoidata/tmux.yaml
+tmux_plugins:
+  - name: sensible
+    repo: tmux-plugins/tmux-sensible
+    version: v3.0.0
+  - name: catppuccin
+    repo: catppuccin/tmux
+    version: v2.1.3
+  - name: pomodoro
+    repo: olimorris/tmux-pomodoro-plus
+    version: v1.0.2
+  - name: tmux-fzf
+    repo: sainnhe/tmux-fzf
+    script: main.tmux
+    version: 05af76d
+  - name: fzf-url
+    repo: wfxr/tmux-fzf-url
+    version: c71d211
+  - name: yank
+    repo: tmux-plugins/tmux-yank
+    version: v2.3.0
+  - name: resurrect
+    repo: tmux-plugins/tmux-resurrect
+    version: v4.0.0
+  - name: continuum
+    repo: tmux-plugins/tmux-continuum
+    version: v3.1.0

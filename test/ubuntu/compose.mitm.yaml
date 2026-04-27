@@ -1,0 +1,12 @@
+services:
+  dotfiles2:
+    extends:
+      file: compose.yaml
+      service: dotfiles2
+    environment:
+      http_proxy: http://host.docker.internal:3128
+      https_proxy: http://host.docker.internal:3128
+      HTTP_PROXY: http://host.docker.internal:3128
+      HTTPS_PROXY: http://host.docker.internal:3128
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

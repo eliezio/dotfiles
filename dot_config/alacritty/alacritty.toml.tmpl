@@ -1,0 +1,30 @@
+[general]
+import = ["~/.config/alacritty/themes/catppuccin-mocha.toml"]
+
+[terminal.shell]
+program = "/bin/zsh"
+args = ["--login", "-c", "tmux"]
+
+[env]
+TERM = "xterm-256color"
+
+[font]
+normal.family = "FiraMono Nerd Font"
+{{ if eq .chezmoi.os "linux" -}}
+size = 15
+{{ else if eq .chezmoi.os "darwin" -}}
+size = 23
+{{ end -}}
+
+[window]
+decorations = "Full"
+startup_mode = "Maximized"
+padding.x = 7
+padding.y = 0
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"
+
+# vim:ft=toml
