@@ -977,6 +977,40 @@ require('lazy').setup({
     end,
   },
 
+{{- if ne .os_like "debian" }}
+  -- Neorg's luarocks-based install pipeline doesn't work with Nix-installed
+  -- luarocks (Ubuntu/Debian path); load only on macOS and Arch/Manjaro.
+  {
+    'nvim-neorg/neorg',
+    lazy = false,
+    version = '*',
+    event = 'VeryLazy',
+    dependencies = {
+      'nvim-neorg/tree-sitter-norg',
+      'nvim-neorg/tree-sitter-norg-meta',
+    },
+    config = function()
+      require('neorg').setup {
+        load = {
+          ['core.defaults'] = {},
+          ['core.concealer'] = {},
+          ['core.dirman'] = {
+            config = {
+              workspaces = {
+                notes = '~/notes',
+              },
+              default_workspace = 'notes',
+            },
+          },
+        },
+      }
+
+      vim.wo.foldlevel = 99
+      vim.wo.conceallevel = 2
+    end,
+  },
+{{- end }}
+
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
