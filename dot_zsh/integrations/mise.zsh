@@ -1,0 +1,1 @@
+alias mr='mise run'
