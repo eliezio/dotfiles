@@ -1,0 +1,17 @@
+[env]
+COMPOSE_REMOVE_ORPHANS = true
+
+[tasks.mitmproxy]
+description = "Launches mitmproxy"
+run = "mitmdump -p 3128 -s ~/.local/share/chezmoi/test/mitmproxy/cache.py"
+
+[tasks.ubuntu]
+description = "Launches a clean Ubuntu container"
+dir = "./test/ubuntu"
+run = "docker compose --file compose.yaml --file ../compose.mitm.yaml up --detach --force-recreate"
+
+[tasks.manjaro]
+description = "Launches a clean Manjaro container"
+env = { DOCKER_DEFAULT_PLATFORM = "linux/amd64" }
+dir = "./test/manjaro"
+run = "docker compose --file compose.yaml --file ../compose.mitm.yaml up --detach --force-recreate"
