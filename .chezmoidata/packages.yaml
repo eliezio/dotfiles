@@ -10,6 +10,7 @@ packages:
     - name: delta
       arch: git-delta
     - name: diffnav
+    - name: fabric-ai
     - name: fastfetch
     - name: fd
     - name: fzf

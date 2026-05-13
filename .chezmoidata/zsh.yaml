@@ -11,6 +11,7 @@ omz_plugins:
   - aws
   - docker
   - docker-compose
+  - fabric
   - git
   - kubectl
   - mise
