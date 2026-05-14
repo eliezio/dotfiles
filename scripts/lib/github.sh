@@ -1,30 +1,38 @@
 # GitHub release helpers. Depends on log.sh (for log_info / log_error) and on
 # the caller having defined $CACHE_DIR.
 #
-# get_github_release [--min-version VERSION] ORG NAME VERSION FORMAT ASSET_TYPE
-#   Ensures a binary named NAME is available and prints the path to use.
+# get_github_release CONFIG_NAMEREF [ALIAS_NAMEREF]
+#   Ensures a binary is available and prints the path to use.
+#
+#   CONFIG_NAMEREF is the name of an associative array (local -A) in the
+#   caller's scope. Required keys:
+#     org            - GitHub org/owner
+#     name           - binary / repo name
+#     version        - semver to download (without leading "v")
+#     asset_basename - template with {name}, {version}, {os}, {arch}
+#                      placeholders. Examples:
+#                        "{name}_{version}_{os}_{arch}"          -> chezmoi_2.70.2_darwin_arm64
+#                        "{name}-{version}-{os}_{arch}"          -> fzf-0.72.0-darwin_arm64
+#                        "{name}-v{version}.{os}.{arch}"         -> sops-v3.12.2.linux.amd64
+#     asset_type     - "tgz" (tar.gz containing binary NAME) or "bin" (raw binary)
+#   Optional keys:
+#     min_version    - if name is already on PATH, verify --version >= this
+#     bin_name       - binary name inside the archive (defaults to name)
+#
+#   ALIAS_NAMEREF (optional) is the name of an associative array mapping
+#   auto-detected OS/arch values to alternate strings. Example:
+#     local -A _aliases=([darwin]="macos")
+#     get_github_release _cfg _aliases
+#   This replaces "darwin" with "macos" in {os} without the caller needing
+#   to know the current platform.
 #
 #   Resolution order:
 #     1. If NAME is already on PATH, print `NAME` and return (after an optional
-#        --min-version check; fails if the installed version is older).
-#     2. If a cached copy exists at $CACHE_DIR/<archive_basename>, print that.
+#        min_version check; fails if the installed version is older).
+#     2. If a cached copy exists at $CACHE_DIR/<asset_basename>, print that.
 #     3. Otherwise download from
-#        github.com/ORG/NAME/releases/download/vVERSION/<archive_basename><ext>,
+#        github.com/ORG/NAME/releases/download/vVERSION/<asset_basename><ext>,
 #        cache it, chmod +x, and print the cached path.
-#
-#   FORMAT is a printf-style template applied as
-#   `printf FORMAT NAME VERSION OS ARCH`, producing <archive_basename>. Examples:
-#     "%s_%s_%s_%s"          -> chezmoi_2.70.2_darwin_arm64
-#     "%s-%s-%s_%s"          -> fzf-0.72.0-darwin_arm64
-#     "%1$s-v%2$s.%3$s.%4$s" -> sops-v3.12.2.linux.amd64
-#
-#   ASSET_TYPE is required and must be one of:
-#     tgz  - asset is a .tar.gz containing a binary named NAME; extracted.
-#     bin  - asset is a raw binary; downloaded as-is.
-#
-#   --min-version VERSION (optional, must come first): if NAME is already on
-#   PATH, verify its `--version` output is >= VERSION; otherwise log an error
-#   and return 1. Has no effect when the binary is downloaded fresh.
 
 check_version() {
   local name="$1"
@@ -40,16 +48,21 @@ check_version() {
 }
 
 get_github_release() {
-  local min_version=""
-  if [[ "$1" == "--min-version" ]]; then
-    min_version="$2"
-    shift 2
+  local -n _gh_config="$1"
+  local org="${_gh_config[org]:?get_github_release: org is required}"
+  local name="${_gh_config[name]:?get_github_release: name is required}"
+  local version="${_gh_config[version]:?get_github_release: version is required}"
+  local asset_basename="${_gh_config[asset_basename]:?get_github_release: asset_basename is required}"
+  local asset_type="${_gh_config[asset_type]:?get_github_release: asset_type is required}"
+  local min_version="${_gh_config[min_version]:-}"
+  local bin_name="${_gh_config[bin_name]:-${name}}"
+  local -A _gh_aliases=()
+  if [[ $# -ge 2 && -n "$2" ]]; then
+    local -n _gh_aliases_ref="$2"
+    for _gh_k in "${!_gh_aliases_ref[@]}"; do
+      _gh_aliases[$_gh_k]="${_gh_aliases_ref[$_gh_k]}"
+    done
   fi
-  local org="$1"
-  local name="$2"
-  local version="$3"
-  local format="$4"
-  local asset_type="$5"
 
   if command -v "$name" &>/dev/null; then
     if [[ -n "$min_version" ]]; then
@@ -71,10 +84,18 @@ get_github_release() {
     aarch64|arm64) arch=arm64 ;;
     *)             log_error "Unsupported arch: $(uname -m)"; return 1 ;;
   esac
-  local archive_basename
-  archive_basename=$(printf "$format" "$name" "$version" "$os" "$arch")
+  os="${_gh_aliases[$os]:-$os}"
+  arch="${_gh_aliases[$arch]:-$arch}"
+  asset_basename="${asset_basename//\{name\}/$name}"
+  asset_basename="${asset_basename//\{version\}/$version}"
+  asset_basename="${asset_basename//\{os\}/$os}"
+  asset_basename="${asset_basename//\{arch\}/$arch}"
+  bin_name="${bin_name//\{name\}/$name}"
+  bin_name="${bin_name//\{version\}/$version}"
+  bin_name="${bin_name//\{os\}/$os}"
+  bin_name="${bin_name//\{arch\}/$arch}"
 
-  local cached="$CACHE_DIR/$archive_basename"
+  local cached="$CACHE_DIR/${name}_${os}_${arch}"
   if [[ -x "$cached" ]]; then
     echo "$cached"
     return
@@ -87,12 +108,12 @@ get_github_release() {
   esac
 
   mkdir -p "$CACHE_DIR"
-  local url="https://github.com/${org}/${name}/releases/download/v${version}/${archive_basename}${archive_ext}"
+  local url="https://github.com/${org}/${name}/releases/download/v${version}/${asset_basename}${archive_ext}"
   log_info "Downloading $url"
   case "$asset_type" in
     tgz)
-      curl -fsSL "$url" | tar xz -C "$CACHE_DIR" "$name"
-      mv "$CACHE_DIR/$name" "$cached"
+      curl -fsSL "$url" | tar xz -C "$CACHE_DIR" "$bin_name"
+      [[ "$bin_name" == "$cached" ]] || mv "$CACHE_DIR/$bin_name" "$cached"
       ;;
     bin)
       curl -fsSL "$url" -o "$cached"
