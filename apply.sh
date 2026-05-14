@@ -24,9 +24,13 @@ source "$SOURCE_DIR/scripts/lib/log.sh"
 # shellcheck source=scripts/lib/github.sh
 source "$SOURCE_DIR/scripts/lib/github.sh"
 
-export CURL_HOME=$(mktemp -d)
-echo "--progress-bar" > $CURL_HOME/.curlrc
-trap "rm -rf $CURL_HOME" EXIT ERR INT
+export TMP_CONFIG_HOME=$(mktemp -d)
+trap "rm -rf $TMP_CONFIG_HOME" EXIT ERR INT
+
+configure_curl() {
+  export CURL_HOME=$TMP_CONFIG_HOME
+  echo "--progress-bar" > $CURL_HOME/.curlrc
+}
 
 # Concatenate $CERTS_SOURCE_DIR/*.crt and export the SSL/cURL/Nix env vars to
 # point at it. Needed so the chezmoi self-download (and chezmoi externals) work
@@ -67,29 +71,40 @@ amend_bin_path() {
   esac
 }
 
-amend_bin_path
-
-setup_ssl_bundle
-
 get_chezmoi() {
-  get_github_release --min-version "2.36" "twpayne" "chezmoi" "2.70.2" "%s_%s_%s_%s" "tgz"
+  local -A _cfg=(
+    [org]="twpayne"
+    [name]="chezmoi"
+    [version]="2.70.3"
+    [asset_basename]="{name}_{version}_{os}_{arch}"
+    [asset_type]="tgz"
+    [min_version]="2.36"
+  )
+  get_github_release _cfg
 }
 
 get_sops() {
-  get_github_release --min-version "3.10" "getsops" "sops" "3.12.2" '%s-v%s.%s.%s' "bin"
+  local -A _cfg=(
+    [org]="getsops"
+    [name]="sops"
+    [version]="3.13.0"
+    [asset_basename]="{name}-v{version}.{os}.{arch}"
+    [asset_type]="bin"
+    [min_version]="3.10"
+  )
+  get_github_release _cfg
 }
+
+amend_bin_path
+
+configure_curl
+
+setup_ssl_bundle
 
 log_step "Check for required bootstrap applications..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
 
-cleanup() {
-  for prog in "$CHEZMOI" "$SOPS"; do
-    if [[ "$prog" = "${CACHE_DIR}/"* ]]; then
-      rm -f "$prog" || true
-    fi
-  done
-}
 
 log_step "Initializing chezmoi config..."
 "$CHEZMOI" --source "$SOURCE_DIR" init --force
@@ -98,8 +113,5 @@ log_step "chezmoi apply (with secrets)..."
 LOG_STEP_PREFIX="$LOG_STEP_NUM" \
 SOPS_AGE_SSH_PRIVATE_KEY_CMD="$SOURCE_DIR/scripts/bin/decrypt-ssh-key.sh $SSH_KEY" \
   "$SOPS" exec-env --same-process "$SOURCE_DIR/secrets.yaml" "$CHEZMOI --source \"$SOURCE_DIR\" apply $*"
-
-log_step "Cleaning up..."
-cleanup
 
 log_success "Apply complete"
