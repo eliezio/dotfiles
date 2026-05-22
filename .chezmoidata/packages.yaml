@@ -33,6 +33,8 @@ packages:
       arch: github-cli
     - name: git
       description: Distributed revision control system
+    - name: git-lfs
+      description: Git extension for versioning large file
     - name: httpie
       description: User-friendly cURL replacement (command-line HTTP client)
     - name: ijq
