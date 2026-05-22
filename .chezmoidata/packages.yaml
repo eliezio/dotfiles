@@ -1,68 +1,119 @@
 packages:
   cli:
     - name: atuin
+      description: Improved shell history for zsh, bash, fish and nushell
     - name: awscli
+      description: Official Amazon AWS command-line interface
       arch: aws-cli-v2
       nix: awscli2
     - name: bat
+      description: Clone of cat(1) with syntax highlighting and Git integration
+    - name: btop
+      description: Resource monitor. C++ version and continuation of bashtop and bpytop
     - name: chezmoi
+      description: Manage your dotfiles across multiple diverse machines, securely
     - name: curlie
+      description: Power of curl, ease of use of httpie
     - name: delta
+      description: Syntax-highlighting pager for git and diff output
       arch: git-delta
     - name: diffnav
     - name: fabric-ai
+      description: Git diff pager based on delta but with a file tree
     - name: fastfetch
+      description: Like neofetch, but much faster because written mostly in C
     - name: fd
+      description: Simple, fast and user-friendly alternative to find
     - name: fzf
+      description: Command-line fuzzy finder written in Go
     - name: gcc
+      description: GNU compiler collection
     - name: gh
+      description: GitHub command-line tool
       arch: github-cli
     - name: git
+      description: Distributed revision control system
     - name: httpie
+      description: User-friendly cURL replacement (command-line HTTP client)
     - name: ijq
+      description: Interactive jq
     - name: jd
+      description: JSON diff and patch
       arch: jd-tool-bin
       nix: jd-diff-patch
     - name: jless
+      description: Command-line pager for JSON data
     - name: jq
+      description: Lightweight and flexible command-line JSON processor
     - name: k9s
+      description: Kubernetes CLI To Manage Your Clusters In Style!
     - name: kubectl
+      description: Kubernetes command-line interface
     - name: kubectx
+      description: Tool that can switch between kubectl contexts easily and create aliases
     - name: lazydocker
+      description: Lazier way to manage everything docker
     - name: lazygit
+      description: Simple terminal UI for git commands
     - name: lemonade
+      description: Remote utility tool (copy, paste, open browser) over TCP
       arch: lemonade-bin
       brew: eliezio/homebrew-tap/lemonade
     - name: less
+      description: Pager program similar to more
     - name: lsd
+      description: Clone of ls with colorful output, file type icons, and more
     - name: luarocks
+      description: Package manager for the Lua programming language
     - name: mise
+      description: Polyglot runtime manager (asdf rust clone)
     - name: neovim
+      description: Ambitious Vim-fork focused on extensibility and agility
+    - name: pgcli
+      description: CLI for Postgres with auto-completion and syntax highlighting
     - name: ripgrep
+      description: Search tool like grep and The Silver Searcher
     - name: sops
+      description: Editor of encrypted files
     - name: starship
+      description: Cross-shell prompt for astronauts
     - name: tealdeer
+      description: Very fast implementation of tldr in Rust
     - name: tig
+      description: Text interface for Git repositories
     - name: tmux
+      description: Terminal multiplexer
     - name: topgrade
+      description: Upgrade all the things
     - name: tree-sitter-cli
+      description: Parser generator tool
       nix: tree-sitter
     - name: unzip
+      description: Extraction utility for .zip compressed archives
     - name: wget
+      description: Internet file retriever
     - name: worktrunk
+      description: CLI for Git worktree management, designed for parallel AI agent workflows
     - name: xmlstarlet
+      description: XML command-line utilities
     - name: yazi
+      description: Blazing fast terminal file manager written in Rust, based on async I/O
     - name: yq
+      description: Process YAML, JSON, XML, CSV and properties documents from the CLI
       nix: yq-go
     #- name: yt-dlp  # excluded as it depends on deno, whose build significantly slows down installation
     - name: zoxide
+      description: Shell extension to navigate your filesystem faster
   gui:
     - name: alacritty
+      description: GPU-accelerated terminal emulator
       brew_cask: true
     - name: font-jetbrains-mono-nerd-font
+      description: JetBrainsMono Nerd Font families (JetBrains Mono)
       arch: ttf-jetbrains-mono-nerd
       brew_cask: true
     - name: font-fira-mono-nerd-font
+      description: FiraMono Nerd Font (Fira)
       arch: otf-firamono-nerd
       brew_cask: true
   system:
