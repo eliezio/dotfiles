@@ -115,10 +115,12 @@ packages:
       description: JetBrainsMono Nerd Font families (JetBrains Mono)
       arch: ttf-jetbrains-mono-nerd
       brew_cask: true
+      nix: nerd-fonts.jetbrains-mono
     - name: font-fira-mono-nerd-font
       description: FiraMono Nerd Font (Fira)
       arch: otf-firamono-nerd
       brew_cask: true
+      nix: nerd-fonts.fira-mono
   system:
     brew:
     arch:

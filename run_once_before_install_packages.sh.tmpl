@@ -18,13 +18,10 @@ GUI_PKGS=(
 {{ end -}}
 )
 
-resolve_name() {
-  local canonical="$1"
-  local -n map="$2"
-  echo "${map[$canonical]:-$canonical}"
-}
-
-# Platform-specific installer: defines SYSTEM_PKGS / name maps and install_packages.
+# Platform-specific installer adapter. Contract:
+#   install_packages CLI_REF GUI_REF  — namerefs to package-name arrays.
+#                                        Both bound on every platform.
+#   install_system_packages           — mandatory; no-op on macOS.
 {{ includeTemplate (printf "scripts/lib/%s/installer.sh" .os_like) . }}
 
 # ---------------------------------------------------------------------------
@@ -82,13 +79,11 @@ if [ "$(uname -s)" = "Linux" ]; then
   install_system_certs
 fi
 
-if [[ $(type -t install_system_packages) == function ]]; then
-  log_step "Installing system packages..."
-  install_system_packages
-fi
+log_step "Install system packages"
+install_system_packages
 
 log_step "Install packages"
-install_packages
+install_packages CLI_PKGS GUI_PKGS
 
 log_step "Set default shell to zsh"
 set_default_shell

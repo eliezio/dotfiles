@@ -1,5 +1,9 @@
-# Arch / Manjaro installer (pacman + yay). Expects CLI_PKGS, GUI_PKGS,
-# resolve_name in scope.
+# Arch / Manjaro installer adapter (pacman + yay).
+#
+#   install_packages CLI_REF GUI_REF
+#     Both refs are merged into a single yay call.
+#   install_system_packages
+#     pacman -S over SYSTEM_PKGS (templated from .packages.system.arch).
 
 SYSTEM_PKGS=({{ range .packages.system.arch }}{{ . }} {{ end }})
 
@@ -20,11 +24,11 @@ install_system_packages() {
 }
 
 install_packages() {
+  local -n _cli="$1"
+  local -n _gui="$2"
   local arch_pkgs=()
-  for pkg in "${CLI_PKGS[@]}" "${GUI_PKGS[@]}"; do
-    local resolved
-    resolved=$(resolve_name "$pkg" ARCH_NAME)
-    arch_pkgs+=("$resolved")
+  for pkg in "${_cli[@]}" "${_gui[@]}"; do
+    arch_pkgs+=("${ARCH_NAME[$pkg]:-$pkg}")
   done
   yay --config=$CUSTOM_PACMAN_CONF -S --needed --noconfirm --answerdiff=None --answerclean=None --color=always "${arch_pkgs[@]}"
 }

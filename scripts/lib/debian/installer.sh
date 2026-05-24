@@ -1,10 +1,16 @@
-# Debian / Ubuntu installer (apt + Nix single-user). Expects CLI_PKGS,
-# resolve_name, log_step, log_success in scope.
+# Debian / Ubuntu installer adapter (apt + Nix single-user).
+#
+#   install_packages CLI_REF GUI_REF
+#     Both refs are merged into a single `nix profile add` call.
+#     Packages mapped to "__SKIP__" in NIX_NAME are omitted.
+#   install_system_packages
+#     apt-get update + apt-get install over SYSTEM_PKGS
+#     (templated from .packages.system.debian).
 
 SYSTEM_PKGS=({{ range .packages.system.debian }}{{ . }} {{ end }})
 
 declare -A NIX_NAME=(
-{{ range .packages.cli -}}
+{{ range concat .packages.cli .packages.gui -}}
 {{ if hasKey . "nix" }}  [{{ .name }}]={{ .nix }}
 {{ end -}}
 {{ end -}}
@@ -33,6 +39,9 @@ install_system_packages() {
 }
 
 install_packages() {
+  local -n _cli="$1"
+  local -n _gui="$2"
+
   if ! command -v nix &>/dev/null; then
     install_nix
   fi
@@ -40,11 +49,10 @@ install_packages() {
   ensure_nix_feature
 
   local nix_pkgs=()
-  for pkg in "${CLI_PKGS[@]}"; do
-    local resolved
-    resolved=$(resolve_name "$pkg" NIX_NAME)
-    if [[ "$resolved" != "__SKIP__" ]]; then
-      nix_pkgs+=("nixpkgs#$resolved")
+  for pkg in "${_cli[@]}" "${_gui[@]}"; do
+    local name="${NIX_NAME[$pkg]:-$pkg}"
+    if [[ "$name" != "__SKIP__" ]]; then
+      nix_pkgs+=("nixpkgs#$name")
     fi
   done
 
