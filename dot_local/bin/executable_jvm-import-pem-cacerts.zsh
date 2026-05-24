@@ -1,7 +1,6 @@
 #!/usr/bin/env zsh
-# jvm-import-pem-cacerts.zsh — Sync ${certs_dir}/*.crt into a JVM's cacerts
-# truststore. Idempotent: matches certs by SHA-1 fingerprint. Default
-# certs_dir: ${XDG_DATA_HOME:-$HOME/.local/share}/certs.
+# jvm-import-pem-cacerts.zsh — Sync trust roots into a JVM's cacerts
+# truststore. Idempotent: matches certs by SHA-1 fingerprint.
 
 emulate -L zsh
 set -euo pipefail
@@ -135,7 +134,7 @@ main() {
   cert_files=("${(o)cert_files[@]}")  # sort
 
   if (( ${#cert_files[@]} == 0 )); then
-    log_info "Skipping JVM truststore import; no .crt files in $certs_dir."
+    log_info "Skipping JVM truststore import; no trust roots in $certs_dir."
     return 0
   fi
 
