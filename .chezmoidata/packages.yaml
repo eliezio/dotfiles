@@ -31,6 +31,7 @@ packages:
     - name: gh
       description: GitHub command-line tool
       arch: github-cli
+    - name: ghq
     - name: git
       description: Distributed revision control system
     - name: git-lfs
