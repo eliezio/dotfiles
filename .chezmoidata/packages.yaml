@@ -71,6 +71,11 @@ packages:
       description: Polyglot runtime manager (asdf rust clone)
     - name: neovim
       description: Ambitious Vim-fork focused on extensibility and agility
+    - name: nodejs
+      description: Open-source, cross-platform JavaScript runtime environment
+    - name: npm
+      description: Open-source, cross-platform JavaScript runtime environment
+      nix: __SKIP__   # provided by nodejs
     - name: pgcli
       description: CLI for Postgres with auto-completion and syntax highlighting
     - name: ripgrep
