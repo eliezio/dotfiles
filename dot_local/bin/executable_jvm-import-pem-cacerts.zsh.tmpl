@@ -120,7 +120,7 @@ import_cert() {
 
 main() {
   local java_home_arg=""
-  local certs_dir="${XDG_DATA_HOME:-$HOME/.local/share}/certs"
+  local certs_dir="{{ env "TRUST_CERTS_DIR" }}"
 
   while (( $# > 0 )); do
     case "$1" in
@@ -188,3 +188,5 @@ main() {
 }
 
 main "$@"
+
+# vim: ft=zsh

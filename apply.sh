@@ -11,10 +11,8 @@ if [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   fi
 fi
 
-# SOURCE_DIR is the chezmoi source root; CERTS_SOURCE_DIR is exported so the
-# chezmoi-managed run_once script can find ./certs (it runs from a temp dir).
+# SOURCE_DIR is the chezmoi source root;
 export SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-export CERTS_SOURCE_DIR="$SOURCE_DIR/dot_local/share/certs"
 CACHE_DIR="$SOURCE_DIR/.cache"
 
 SSH_KEY="${SOPS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
@@ -32,29 +30,29 @@ configure_curl() {
   echo "--progress-bar" > $CURL_HOME/.curlrc
 }
 
-# Concatenate $CERTS_SOURCE_DIR/*.crt and export the SSL/cURL/Nix env vars to
-# point at it. Needed so the chezmoi self-download (and chezmoi externals) work
-# behind an MITM proxy whose CA isn't in the system store.
-# Returns early if no custom certs exist.
-setup_ssl_bundle() {
+# TRUST_ROOTS_SOURCE_DIR is exported so the chezmoi-managed run_once script can find ./certs (it runs from a temp dir).
+export TRUST_ROOTS_SOURCE_DIR="$SOURCE_DIR/dot_local/share/certs"
+export TRUST_CERTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/certs"
+export TRUST_BUNDLE_FILE="${TRUST_CERTS_DIR}/trust-bundle.pem"
+
+trust_build_bundle() {
   shopt -s nullglob
-  local certs=("$CERTS_SOURCE_DIR"/*.crt)
+  local certs=("$TRUST_ROOTS_SOURCE_DIR"/*.crt)
   shopt -u nullglob
 
-  [ "${#certs[@]}" -eq 0 ] && return 0
+  if [ "${#certs[@]}" -eq 0 ]; then
+    rm -f "$TRUST_BUNDLE_FILE"
+    echo ""
+  fi
 
-  local bundle="${XDG_DATA_HOME:-$HOME/.local/share}/certs/certs-bundle.pem"
-  mkdir -p "$(dirname "$bundle")"
+  mkdir -p "$(dirname "$TRUST_BUNDLE_FILE")"
   # Newline after each block so PEM headers/footers never glue together when
   # a source file lacks a trailing newline.
   for cert in "${certs[@]}"; do
     cat "$cert"
     echo
-  done > "$bundle"
-
-  export SSL_CERT_FILE="$bundle"
-  export NIX_SSL_CERT_FILE="$bundle"
-  export CURL_CA_BUNDLE="$bundle"
+  done > "$TRUST_BUNDLE_FILE"
+  echo "$TRUST_BUNDLE_FILE"
 }
 
 pathadd() {
@@ -118,6 +116,7 @@ get_micro() {
   )
   local -A _aliases=(
     [darwin]="macos"
+    [linux-amd64]="linux64"
   )
   get_github_release _cfg _aliases
 }
@@ -133,15 +132,20 @@ amend_bin_path
 
 configure_curl
 
-setup_ssl_bundle
+bundle=$(trust_build_bundle)
+if [ -f "$bundle" ]; then
+  export SSL_CERT_FILE="$bundle"
+  export NIX_SSL_CERT_FILE="$bundle"
+  export CURL_CA_BUNDLE="$bundle"
+fi
 
 log_step "Check for required bootstrap applications..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
 YQ=$(get_yq)
-MICRO=$(get_micro)
+#MICRO=$(get_micro)
 
-configure_micro
+#configure_micro
 
 log_step "Initializing chezmoi config..."
 "$CHEZMOI" --source "$SOURCE_DIR" init --force

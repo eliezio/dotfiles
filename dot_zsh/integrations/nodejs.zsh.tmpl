@@ -1,0 +1,3 @@
+if [[ -f "{{ env "TRUST_BUNDLE_FILE" }}" ]]; then
+  export NODE_EXTRA_CA_CERTS="{{ env "TRUST_BUNDLE_FILE" }}"
+fi

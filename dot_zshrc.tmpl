@@ -46,8 +46,8 @@ source $ZSH_PLUGINS/{{ .name }}/{{ .main }}
 {{- end }}
 
 # Additional integrations (auto-discovered from dot_zsh/integrations at apply time)
-{{- range (glob (printf "%s/dot_zsh/integrations/*.zsh" .chezmoi.sourceDir)) }}
-source ~/.zsh/integrations/{{ base . }}
+{{- range (glob (printf "%s/dot_zsh/integrations/*.zsh*" .chezmoi.sourceDir)) }}
+source ~/.zsh/integrations/{{ trimSuffix ".tmpl" (base .) }}
 {{- end }}
 
 if [[ -e ~/.zsh/local.zsh ]]; then

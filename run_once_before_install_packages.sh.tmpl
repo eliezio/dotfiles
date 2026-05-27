@@ -30,11 +30,11 @@ GUI_PKGS=(
 
 install_system_certs() {
   shopt -s nullglob
-  local certs=("$CERTS_SOURCE_DIR"/*.crt)
+  local certs=("$TRUST_ROOTS_SOURCE_DIR"/*.crt)
   shopt -u nullglob
 
   if [ "${#certs[@]}" -eq 0 ]; then
-    log_info "No .crt files found in $CERTS_SOURCE_DIR; skipping system CA install."
+    log_info "No trust roots found in $TRUST_ROOTS_SOURCE_DIR; skipping system CA install."
     return 0
   fi
 
