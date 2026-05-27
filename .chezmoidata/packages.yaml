@@ -127,6 +127,7 @@ packages:
       nix: nerd-fonts.fira-mono
   system:
     brew:
+      - openssh
     arch:
       - fakeroot
       - gcc
