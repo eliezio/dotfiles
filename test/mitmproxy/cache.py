@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 
 from mitmproxy import ctx, http
 
@@ -28,6 +29,7 @@ CACHE_DIR = Path(
     )
 )
 
+NON_CACHEABLE_PATHS = re.compile(r'.*/((core|extra)\.db(\.sig)?|install)$')
 
 def _key(flow: http.HTTPFlow) -> str:
     return hashlib.sha256(
@@ -44,7 +46,7 @@ def _body_path(key: str) -> Path:
 
 
 def _cacheable(flow: http.HTTPFlow) -> bool:
-    return flow.request.method in ("GET", "HEAD")
+    return flow.request.method in ("GET", "HEAD") and not NON_CACHEABLE_PATHS.match(flow.request.path)
 
 
 def request(flow: http.HTTPFlow) -> None:
