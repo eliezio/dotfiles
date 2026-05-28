@@ -29,12 +29,15 @@ GUI_PKGS=(
 # ---------------------------------------------------------------------------
 
 install_system_certs() {
+  # run_*before_* scripts execute before file deployment, so the certs are
+  # only in the source state (not yet at ~/.local/share/certs).
+  local certs_source_dir={{ joinPath .chezmoi.sourceDir "dot_local/share/certs" | quote }}
   shopt -s nullglob
-  local certs=("$TRUST_ROOTS_SOURCE_DIR"/*.crt)
+  local certs=("$certs_source_dir"/*.crt)
   shopt -u nullglob
 
   if [ "${#certs[@]}" -eq 0 ]; then
-    log_info "No trust roots found in $TRUST_ROOTS_SOURCE_DIR; skipping system CA install."
+    log_info "No trust roots found in $certs_source_dir; skipping system CA install."
     return 0
   fi
 

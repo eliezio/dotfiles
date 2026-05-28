@@ -1,0 +1,10 @@
+# Single source of truth for cert/trust-bundle paths used by templates.
+# Paths are relative to $HOME; templates resolve them via:
+#   {{ joinPath .chezmoi.homeDir .trust.certs_dir_rel }}
+#   {{ joinPath .chezmoi.homeDir .trust.certs_dir_rel .trust.bundle_filename }}
+#
+# NOTE: apply.sh duplicates these literals because it runs before chezmoi
+# is available to render this data. Keep apply.sh in sync.
+trust:
+  certs_dir_rel: .local/share/certs
+  bundle_filename: trust-bundle.pem

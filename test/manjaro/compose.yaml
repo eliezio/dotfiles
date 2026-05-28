@@ -6,10 +6,10 @@ services:
     volumes:
       - type: bind
         source: $PWD/../..
-        target: /home/manjaro/chezmoi
+        target: /home/manjaro/.local/share/chezmoi
       - type: bind
-        source: $HOME/.ssh
-        target: /home/manjaro/.ssh
+        source: $HOME/.config/sops/age/keys.txt
+        target: /home/manjaro/.config/sops/age/keys.txt
         read_only: true
     command: [ "sleep", "infinity" ]
-    working_dir: /home/manjaro/chezmoi
+    working_dir: /home/manjaro/.local/share/chezmoi

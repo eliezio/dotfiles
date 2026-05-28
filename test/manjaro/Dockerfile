@@ -12,3 +12,5 @@ RUN sudo pacman-mirrors --country United_Kingdom
 
 USER manjaro
 WORKDIR /home/manjaro
+
+RUN mkdir -p $HOME/.config $HOME/.local/share

@@ -7,7 +7,7 @@
 #     No-op; Homebrew is user-level on macOS.
 
 declare -A BREW_NAME=(
-{{ range concat .packages.system.macos .packages.cli .packages.gui -}}
+{{ range concat .packages.cli .packages.gui -}}
 {{ if hasKey . "brew" }}  [{{ .name }}]={{ .brew }}
 {{ end -}}
 {{ end -}}

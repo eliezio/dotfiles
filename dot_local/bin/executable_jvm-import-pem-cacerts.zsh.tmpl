@@ -120,7 +120,7 @@ import_cert() {
 
 main() {
   local java_home_arg=""
-  local certs_dir="{{ env "TRUST_CERTS_DIR" }}"
+  local certs_dir={{ joinPath .chezmoi.homeDir .trust.certs_dir_rel | quote }}
 
   while (( $# > 0 )); do
     case "$1" in

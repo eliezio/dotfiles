@@ -8,9 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Commands
 
-- `./apply.sh` — sole entrypoint. Downloads chezmoi + sops into `.cache/`, runs `chezmoi init`, then one secrets-aware `chezmoi apply` (no two-phase bootstrap).
+- `chezmoi apply` — daily command. Works directly on any already-bootstrapped machine.
+- `./apply.sh` — first-machine bootstrap. Downloads chezmoi + sops into `.cache/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
+- `sops edit secrets.yaml` — edit secrets (single sops-encrypted file).
 - `chezmoi execute-template < FILE.tmpl` — render a template against current data. Use this to debug template logic before applying.
-- `chezmoi diff` — preview pending changes.
+- `chezmoi diff` — preview pending changes. Silent (never invokes sops).
 - `bash -n FILE.sh` / `zsh -n FILE.zsh` — syntax-check shell scripts. Recommended after every edit.
 
 ### Testing in containers
@@ -18,20 +20,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Smoke-test installs in throwaway containers under `test/{manjaro,ubuntu}/`:
 
 ```bash
-cd test/manjaro && docker compose up -d
+cd test/manjaro && docker compose --file compose.yaml --file ../compose.mitm.yaml up -d
 docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 ```
 
-Both compose files mount the chezmoi source as a volume and bake in proxy env vars (`http_proxy=http://host.docker.internal:3128`). The `extra_hosts: ["host.docker.internal:host-gateway"]` line is required on Linux Docker.
+Proxy env vars live in `test/compose.mitm.yaml` (overlay), not the per-distro `compose.yaml`. The `extra_hosts: ["host.docker.internal:host-gateway"]` line is required on Linux Docker.
 
 ## Architecture
 
-**Bootstrap flow (`apply.sh`)**
+**Bootstrap flow (`apply.sh`)** — first-machine only; after that, use bare `chezmoi apply`.
 
-1. Sources `scripts/lib/log.sh` (colored `log_*` helpers + `run_stage`/`review_logs`) and `scripts/lib/github.sh` (`get_github_release` for cached binary downloads).
-2. Builds a user CA bundle at `~/.local/share/certs/certs-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `NIX_SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
-3. Downloads chezmoi + sops binaries to `.cache/` (early-out if already on PATH or cached).
-4. `chezmoi init --force`, then `sops exec-env … chezmoi apply` — secrets templated in one pass.
+1. Self-execs into bash 5+ (macOS ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5).
+2. Sources `scripts/lib/log.sh` (colored `log_*` helpers) and `scripts/lib/github.sh` (`get_github_release` for cached binary downloads).
+3. Builds the trust bundle at `~/.local/share/certs/trust-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `NIX_SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
+4. Downloads chezmoi + sops binaries to `.cache/` (early-out if already on PATH).
+5. `chezmoi init --force`, then `exec chezmoi apply` — templates are pure (no template-time sops).
 
 **Platform branching** uses `os_like` ∈ {`macos`, `arch`, `debian`}:
 
@@ -49,25 +52,27 @@ Both compose files mount the chezmoi source as a volume and bake in proxy env va
 **Cert / proxy CA management**
 
 - Drop `*.crt` files in `dot_local/share/certs/` → applied to `~/.local/share/certs/`.
-- `apply.sh` writes the user bundle to `~/.local/share/certs/certs-bundle.pem`. `dot_zsh/integrations/{nodejs,python}.zsh` point `NODE_EXTRA_CA_CERTS` and `REQUESTS_CA_BUNDLE` at it.
-- `run_once_install_packages.sh.tmpl:install_system_certs` registers each `.crt` with the system trust store on Linux (auto-detects `update-ca-trust` on Arch vs `update-ca-certificates` on Debian).
-- `dot_local/bin/executable_jvm-import-pem-cacerts.zsh` syncs certs into a JVM `cacerts` keyed by SHA-1 fingerprint (idempotent). Invoked from the mise post-install hook for each newly-installed Java install (the hook iterates `$MISE_INSTALLED_TOOLS`, not `mise where java`).
+- `apply.sh` writes `~/.local/share/certs/trust-bundle.pem` on first bootstrap. The two literal paths (`certs_dir_rel`, `bundle_filename`) live in `.chezmoidata/trust.yaml`; templates resolve them via `joinPath .chezmoi.homeDir .trust.*`. `apply.sh` duplicates them with a sync comment (bootstrap chicken-and-egg).
+- `dot_zsh/integrations/{nodejs,python}.zsh.tmpl` point `NODE_EXTRA_CA_CERTS` and `REQUESTS_CA_BUNDLE` at the bundle.
+- `run_once_before_install_packages.sh.tmpl:install_system_certs` registers each `.crt` with the system trust store on Linux (auto-detects `update-ca-trust` on Arch vs `update-ca-certificates` on Debian). Reads from `.chezmoi.sourceDir/dot_local/share/certs` because `run_*before_*` scripts execute before file deployment.
+- `dot_local/bin/executable_jvm-import-pem-cacerts.zsh.tmpl` syncs certs into a JVM `cacerts` keyed by SHA-1 fingerprint (idempotent). Invoked from the mise post-install hook for each newly-installed Java install (the hook iterates `$MISE_INSTALLED_TOOLS`, not `mise where java`).
 
 **Secrets** (sops + age)
 
-- `secrets.yaml` is sops-encrypted, decrypted via `scripts/bin/decrypt-ssh-key.sh` using the user's SSH key as the age identity.
-- Every chezmoi apply runs inside `sops exec-env`, so secret env vars are available in templates without a separate decryption step.
-- `run_after_secrets.sh.tmpl` runs post-apply; uses `$GITHUB_TOKEN` from sops to re-auth `gh` CLI.
+- `secrets.yaml` is sops-encrypted to a single age recipient. The recipient list is declared in `.sops.yaml`.
+- The age identity (`~/.config/sops/age/keys.txt`) is **user-managed**: restored from a password manager on each new machine. The private key never enters the repo.
+- Templates are pure — no sops invocation at template-resolution time. `chezmoi diff` / `status` / `cat` never touch sops.
+- `run_after_secrets.sh.tmpl` calls `sops --decrypt --extract '["GITHUB_TOKEN"]' …` at script-execution time and pipes the token into `gh auth login --with-token`. Sets `SOPS_AGE_KEY_FILE` explicitly to the XDG path, since sops's default on macOS is `~/Library/Application Support/sops/age/keys.txt`.
 
 ## Conventions
 
-- **Bash 4+ required.** `run_once_install_packages.sh.tmpl` self-execs `/opt/homebrew/bin/bash` on macOS to satisfy this (Apple ships bash 3.2 — no associative arrays).
+- **Bash 5+ required.** `apply.sh` self-execs `/opt/homebrew/bin/bash` on macOS to satisfy this (Apple ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5).
 - **`set -euo pipefail` is standard.** Under errexit, **prefer `(( ++var ))` over `(( var++ ))`** — post-increment exposes the pre-value, so the first increment when `var=0` evaluates to 0 (false) and trips errexit. Same trap for any `(( expr ))` whose result might be zero.
 - **`scripts/` is in `.chezmoiignore`** — treated as a source-only library directory, not deployed to home. Files there are sourced from `apply.sh` directly or templated into managed scripts via `{{ include }}` / `{{ includeTemplate }}`.
 - **`dot_zsh/integrations/*.zsh`** is glob-discovered at apply time. Adding a new tool integration means dropping a file there — no other edits.
 - **Per-platform installer files** are templates, not standalone shell scripts. They reference `CLI_PKGS`, `GUI_PKGS`, `resolve_name` from the parent run_once script (which sources the lib via `includeTemplate`).
-- **Minimum chezmoi version**: `2.36.0` (`.chezmoiexternals/` directory). `apply.sh` pins `2.70.2`.
-- **Certs**: source-state path is `dot_local/share/certs/*.crt`. The `.pem` extension is intentionally not globbed (the bundle is a `.pem` co-located there; this prevents recursive imports).
+- **Minimum chezmoi version**: `2.36.0` (`.chezmoiexternals/` directory). `apply.sh` pins `2.70.3`.
+- **Trust paths**: source of truth is `.chezmoidata/trust.yaml` (`certs_dir_rel`, `bundle_filename`). Templates use `joinPath .chezmoi.homeDir .trust.*`. `apply.sh` hardcodes the same paths with a sync comment because bootstrap runs before chezmoi data is available.
 
 ---
 

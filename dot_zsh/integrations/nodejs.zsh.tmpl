@@ -1,3 +1,4 @@
-if [[ -f "{{ env "TRUST_BUNDLE_FILE" }}" ]]; then
-  export NODE_EXTRA_CA_CERTS="{{ env "TRUST_BUNDLE_FILE" }}"
+{{- $bundle := joinPath .chezmoi.homeDir .trust.certs_dir_rel .trust.bundle_filename -}}
+if [[ -f {{ $bundle | quote }} ]]; then
+  export NODE_EXTRA_CA_CERTS={{ $bundle | quote }}
 fi

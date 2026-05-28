@@ -1,7 +1,7 @@
 **/lazy-lock.json
 user.yaml
-decrypt-ssh-key.sh
 secrets.yaml
+.sops.yaml
 mise.toml
 apply.sh
 .cache/

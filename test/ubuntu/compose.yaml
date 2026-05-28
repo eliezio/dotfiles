@@ -6,10 +6,10 @@ services:
     volumes:
       - type: bind
         source: $PWD/../..
-        target: /home/ubuntu/chezmoi
+        target: /home/ubuntu/.local/share/chezmoi
       - type: bind
-        source: $HOME/.ssh
-        target: /home/ubuntu/.ssh
+        source: $HOME/.config/sops/age/keys.txt
+        target: /home/ubuntu/.config/sops/age/keys.txt
         read_only: true
     command: [ "sleep", "infinity" ]
-    working_dir: /home/ubuntu/chezmoi
+    working_dir: /home/ubuntu/.local/share/chezmoi

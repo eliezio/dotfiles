@@ -23,3 +23,5 @@ RUN echo 'Defaults env_keep += "http_proxy https_proxy no_proxy HTTP_PROXY HTTPS
 
 USER ubuntu
 WORKDIR /home/ubuntu
+
+RUN mkdir -p $HOME/.config $HOME/.local/share

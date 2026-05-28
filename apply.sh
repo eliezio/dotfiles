@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# First-machine bootstrap for this chezmoi repo.
+#
+# Daily use: just `chezmoi apply`. This script exists only because
+# chezmoi + sops are not yet installed on a clean machine.
+#
+# Prerequisite: the age identity at ~/.config/sops/age/keys.txt must already
+# exist (restore it from your password manager). secrets.yaml is encrypted to
+# that single recipient.
+
 # log.sh needs $EPOCHREALTIME (bash 5+); macOS ships bash 3.2.
 if [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   if [[ -x /opt/homebrew/bin/bash ]]; then
@@ -11,48 +20,50 @@ if [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   fi
 fi
 
-# SOURCE_DIR is the chezmoi source root;
-export SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+export SOURCE_DIR
 CACHE_DIR="$SOURCE_DIR/.cache"
-
-SSH_KEY="${SOPS_SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
 # shellcheck source=scripts/lib/log.sh
 source "$SOURCE_DIR/scripts/lib/log.sh"
 # shellcheck source=scripts/lib/github.sh
 source "$SOURCE_DIR/scripts/lib/github.sh"
 
-export TMP_CONFIG_HOME=$(mktemp -d)
-trap "rm -rf $TMP_CONFIG_HOME" EXIT ERR INT
+TMP_CONFIG_HOME=$(mktemp -d)
+export TMP_CONFIG_HOME
+trap 'rm -rf -- "$TMP_CONFIG_HOME"' EXIT
 
 configure_curl() {
-  export CURL_HOME=$TMP_CONFIG_HOME
-  echo "--progress-bar" > $CURL_HOME/.curlrc
+  export CURL_HOME="$TMP_CONFIG_HOME"
+  printf '%s\n' "--progress-bar" > "$CURL_HOME/.curlrc"
 }
 
-# TRUST_ROOTS_SOURCE_DIR is exported so the chezmoi-managed run_once script can find ./certs (it runs from a temp dir).
-export TRUST_ROOTS_SOURCE_DIR="$SOURCE_DIR/dot_local/share/certs"
-export TRUST_CERTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/certs"
-export TRUST_BUNDLE_FILE="${TRUST_CERTS_DIR}/trust-bundle.pem"
+# NOTE: trust paths duplicate .chezmoidata/trust.yaml. They are kept in sync
+# manually because apply.sh runs before chezmoi is available to render the
+# data. If you change one, change the other.
+TRUST_CERTS_SOURCE_DIR="$SOURCE_DIR/dot_local/share/certs"
+TRUST_CERTS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/certs"
+TRUST_BUNDLE_FILE="$TRUST_CERTS_DIR/trust-bundle.pem"
 
 trust_build_bundle() {
   shopt -s nullglob
-  local certs=("$TRUST_ROOTS_SOURCE_DIR"/*.crt)
+  local certs=("$TRUST_CERTS_SOURCE_DIR"/*.crt)
   shopt -u nullglob
 
-  if [ "${#certs[@]}" -eq 0 ]; then
+  if (( ${#certs[@]} == 0 )); then
     rm -f "$TRUST_BUNDLE_FILE"
-    echo ""
+    return 0
   fi
 
   mkdir -p "$(dirname "$TRUST_BUNDLE_FILE")"
-  # Newline after each block so PEM headers/footers never glue together when
-  # a source file lacks a trailing newline.
-  for cert in "${certs[@]}"; do
-    cat "$cert"
-    echo
-  done > "$TRUST_BUNDLE_FILE"
-  echo "$TRUST_BUNDLE_FILE"
+  # Trailing newline after each cert so PEM headers/footers never glue
+  # together when a source file lacks one.
+  {
+    for cert in "${certs[@]}"; do
+      cat "$cert"
+      echo
+    done
+  } > "$TRUST_BUNDLE_FILE"
 }
 
 pathadd() {
@@ -93,66 +104,32 @@ get_sops() {
   get_github_release _cfg
 }
 
-get_yq() {
-  local -A _cfg=(
-    [org]="mikefarah"
-    [name]="yq"
-    [version]="4.53.2"
-    [asset_basename]="{name}_{os}_{arch}"
-    [asset_type]="tgz"
-    [bin_name]="./{name}_{os}_{arch}"
-  )
-  get_github_release _cfg
-}
-
-get_micro() {
-  local -A _cfg=(
-    [org]="micro-editor"
-    [name]="micro"
-    [version]="2.0.15"
-    [asset_basename]="{name}-{version}-{os}-{arch}"
-    [asset_type]="tgz"
-    [bin_name]="{name}-{version}/{name}"
-  )
-  local -A _aliases=(
-    [darwin]="macos"
-    [linux-amd64]="linux64"
-  )
-  get_github_release _cfg _aliases
-}
-
-configure_micro() {
-  export MICRO_CONFIG_HOME=$TMP_CONFIG_HOME/micro
-  mkdir -p $MICRO_CONFIG_HOME
-  echo '{ "Ctrl-k": "SelectToEndOfLine,Delete" }' > $MICRO_CONFIG_HOME/bindings.json
-  echo '{ "statusformatr": "Ctrl-s: Save, Ctrl-q: Exit, Ctrl-k: Cut to end of line, $(bind:ToggleHelp): Help" }' > $MICRO_CONFIG_HOME/settings.json
-}
-
 amend_bin_path
-
 configure_curl
 
-bundle=$(trust_build_bundle)
-if [ -f "$bundle" ]; then
-  export SSL_CERT_FILE="$bundle"
-  export NIX_SSL_CERT_FILE="$bundle"
-  export CURL_CA_BUNDLE="$bundle"
+log_step "Build trust bundle..."
+trust_build_bundle
+if [[ -s "$TRUST_BUNDLE_FILE" ]]; then
+  export SSL_CERT_FILE="$TRUST_BUNDLE_FILE"
+  export NIX_SSL_CERT_FILE="$TRUST_BUNDLE_FILE"
+  export CURL_CA_BUNDLE="$TRUST_BUNDLE_FILE"
+  log_info "Using trust bundle at $TRUST_BUNDLE_FILE"
+else
+  log_info "No trust roots; using system CA bundle"
 fi
 
-log_step "Check for required bootstrap applications..."
+log_step "Check for required bootstrap binaries..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
-YQ=$(get_yq)
-#MICRO=$(get_micro)
-
-#configure_micro
+# SOPS isn't invoked by apply.sh itself anymore (run_after_secrets calls it
+# at runtime), but we still need it on PATH because chezmoi-managed scripts
+# will invoke it before the package manager installs it system-wide.
+SOPS_BIN_DIR=$(dirname "$SOPS")
+pathadd "$SOPS_BIN_DIR"
 
 log_step "Initializing chezmoi config..."
 "$CHEZMOI" --source "$SOURCE_DIR" init --force
 
-log_step "chezmoi apply (with secrets)..."
-LOG_STEP_PREFIX="$LOG_STEP_NUM" \
-SOPS_AGE_SSH_PRIVATE_KEY_CMD="$SOURCE_DIR/scripts/bin/decrypt-ssh-key.sh $SSH_KEY" \
-  "$SOPS" exec-env --same-process "$SOURCE_DIR/secrets.yaml" "$CHEZMOI --source \"$SOURCE_DIR\" apply $*"
-
-log_success "Apply complete"
+log_step "chezmoi apply..."
+export LOG_STEP_PREFIX="$LOG_STEP_NUM"
+exec "$CHEZMOI" --source "$SOURCE_DIR" apply "$@"
