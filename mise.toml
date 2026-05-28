@@ -2,8 +2,12 @@
 COMPOSE_REMOVE_ORPHANS = true
 
 [tasks.mitmproxy]
-description = "Launches mitmproxy"
-run = "mitmdump -p 3128 -s ~/.local/share/chezmoi/test/mitmproxy/cache.py"
+description = "Launches mitmproxy with the on-disk caching addon"
+run = "mitmdump -p 3128 -s test/mitmproxy/cache.py"
+
+[tasks.mitmproxy-clean]
+description = "Wipe the mitmproxy disk cache"
+run = "rm -rf ${MITMPROXY_CACHE_DIR:-$HOME/.cache/mitmproxy-cache}"
 
 [tasks.ubuntu]
 description = "Launches a clean Ubuntu container"
