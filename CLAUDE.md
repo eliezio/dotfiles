@@ -62,7 +62,7 @@ Proxy env vars live in `test/compose.mitm.yaml` (overlay), not the per-distro `c
 - `secrets.yaml` is sops-encrypted to a single age recipient. The recipient list is declared in `.sops.yaml`.
 - The age identity (`~/.config/sops/age/keys.txt`) is **user-managed**: restored from a password manager on each new machine. The private key never enters the repo.
 - Templates are pure — no sops invocation at template-resolution time. `chezmoi diff` / `status` / `cat` never touch sops.
-- `run_after_secrets.sh.tmpl` calls `sops --decrypt --extract '["GITHUB_TOKEN"]' …` at script-execution time and pipes the token into `gh auth login --with-token`. Sets `SOPS_AGE_KEY_FILE` explicitly to the XDG path, since sops's default on macOS is `~/Library/Application Support/sops/age/keys.txt`.
+- `run_onchange_after_gh_setup.sh.tmpl` calls `sops --decrypt --extract '["GITHUB_TOKEN"]' …` at script-execution time and pipes the token into `gh auth login --with-token`. Sets `SOPS_AGE_KEY_FILE` explicitly to the XDG path, since sops's default on macOS is `~/Library/Application Support/sops/age/keys.txt`. The `run_onchange_` prefix means chezmoi only re-runs the script when its rendered hash changes; the rendered body embeds the sha256 of `secrets.yaml`'s ciphertext so re-encryption (e.g. after `sops edit`, which is when token rotation actually happens) triggers a re-run. Manual recovery (e.g. token revoked server-side without a `sops edit`): run the script directly, or `sops edit` and save without changes to force re-encryption.
 
 ## Conventions
 

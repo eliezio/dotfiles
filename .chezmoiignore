@@ -4,9 +4,11 @@ secrets.yaml
 .sops.yaml
 mise.toml
 apply.sh
+gh_setup.sh
 .cache/
 .claude/
 CLAUDE.md
+CONTEXT.md
 scripts/
 test/
 {{ if ne .os_like "arch" }}

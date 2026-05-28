@@ -121,9 +121,9 @@ fi
 log_step "Check for required bootstrap binaries..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
-# SOPS isn't invoked by apply.sh itself anymore (run_after_secrets calls it
-# at runtime), but we still need it on PATH because chezmoi-managed scripts
-# will invoke it before the package manager installs it system-wide.
+# SOPS isn't invoked by apply.sh itself anymore (run_onchange_after_gh_setup
+# calls it at runtime), but we still need it on PATH because chezmoi-managed
+# scripts will invoke it before the package manager installs it system-wide.
 SOPS_BIN_DIR=$(dirname "$SOPS")
 pathadd "$SOPS_BIN_DIR"
 
