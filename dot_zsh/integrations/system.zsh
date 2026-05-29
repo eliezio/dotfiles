@@ -7,5 +7,3 @@ if (( ! $+commands[pbpaste] )); then
   alias pbcopy=clipcopy
   alias pbpaste=clippaste
 fi
-
-# vim:ft=zsh
