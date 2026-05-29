@@ -1,6 +1,29 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
 add_newline = false
-format = "$directory$git_branch$git_state$git_status$line_break$character"
+
+format = "$directory$os$git_branch$git_state$git_status$line_break$character"
 right_format = "$cmd_duration"
+
+[os]
+disabled = false
+format = "[$symbol](#blue) "
+
+[os.symbols]
+Ubuntu = "󰕈"
+Arch = "󰣇"
+Manjaro = "󰣇"
+EndeavourOS = "󰣇"
+Macos = ""
+
+[directory]
+format = "[$path](cyan) "
+truncation_length = 4
+truncate_to_repo  = true
+
+[git_branch]
+symbol = ""
+format = "[$symbol $branch](bold purple) "
 
 [git_status]
 ahead = " ⇡$count"
