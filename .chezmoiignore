@@ -8,6 +8,7 @@ gh_setup.sh
 .cache/
 .claude/
 CLAUDE.md
+AGENTS.md
 CONTEXT.md
 scripts/
 test/
