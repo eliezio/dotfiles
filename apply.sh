@@ -95,6 +95,40 @@ get_sops() {
   get_github_release _cfg
 }
 
+get_yq() {
+  local -A _cfg=(
+    [org]="mikefarah"
+    [name]="yq"
+    [version]="4.53.2"
+    [asset_basename]="{name}_{os}_{arch}"
+    [asset_type]="tgz"
+    [bin_name]="./{name}_{os}_{arch}"
+  )
+  get_github_release _cfg
+}
+
+get_micro() {
+  local -A _cfg=(
+    [org]="micro-editor"
+    [name]="micro"
+    [version]="2.0.15"
+    [asset_basename]="{name}-{version}-{os}-{arch}"
+    [asset_type]="tgz"
+    [bin_name]="{name}-{version}/{name}"
+  )
+  local -A _aliases=(
+    [darwin]="macos"
+  )
+  get_github_release _cfg _aliases
+}
+
+configure_micro() {
+  export MICRO_CONFIG_HOME=$TMP_CONFIG_HOME/micro
+  mkdir -p $MICRO_CONFIG_HOME
+  echo '{ "Ctrl-k": "SelectToEndOfLine,Delete" }' > $MICRO_CONFIG_HOME/bindings.json
+  echo '{ "statusformatr": "Ctrl-s: Save, Ctrl-q: Exit, Ctrl-k: Cut to end of line, $(bind:ToggleHelp): Help" }' > $MICRO_CONFIG_HOME/settings.json
+}
+
 amend_bin_path
 
 configure_curl
@@ -104,7 +138,10 @@ setup_ssl_bundle
 log_step "Check for required bootstrap applications..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
+YQ=$(get_yq)
+MICRO=$(get_micro)
 
+configure_micro
 
 log_step "Initializing chezmoi config..."
 "$CHEZMOI" --source "$SOURCE_DIR" init --force
