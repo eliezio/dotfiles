@@ -7,6 +7,7 @@ apply.sh
 gh_setup.sh
 .cache/
 .claude/
+docs/
 CLAUDE.md
 AGENTS.md
 CONTEXT.md

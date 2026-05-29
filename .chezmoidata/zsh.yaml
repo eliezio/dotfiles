@@ -7,6 +7,10 @@ omz_libs:
   - functions
   - git
   - history
+omz_platform_plugins:
+  macos: brew
+  arch: archlinux
+  debian: debian
 omz_plugins:
   - aws
   - docker

@@ -9,13 +9,10 @@ ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"
 mkdir -p "$ZSH_CACHE_DIR/completions"
 
 # fpath additions must precede compinit so _* completion files are picked up
+{{- $platformPlugin := index .omz_platform_plugins .os_like }}
+{{- $allOmzPlugins := prepend .omz_plugins $platformPlugin }}
 fpath+=($ZSH_PLUGINS/zsh-completions/src)
-{{- if eq .os_like "macos" }}
-fpath+=($OMZ/plugins/brew)
-{{- else if eq .os_like "arch" }}
-fpath+=($OMZ/plugins/archlinux)
-{{- end }}
-{{- range .omz_plugins }}
+{{- range $allOmzPlugins }}
 fpath+=($OMZ/plugins/{{ . }})
 {{- end }}
 
@@ -29,12 +26,7 @@ source $OMZ/lib/{{ . }}.zsh
 {{- end }}
 
 # OMZ plugins
-{{ if eq .os_like "macos" -}}
-source $OMZ/plugins/brew/brew.plugin.zsh
-{{ else if eq .os_like "arch" -}}
-source $OMZ/plugins/archlinux/archlinux.plugin.zsh
-{{ end -}}
-{{- range .omz_plugins }}
+{{- range $allOmzPlugins }}
 source $OMZ/plugins/{{ . }}/{{ . }}.plugin.zsh
 {{- end }}
 
