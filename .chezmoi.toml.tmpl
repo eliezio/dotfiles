@@ -14,3 +14,7 @@ os_like = "debian"
 {{ fail (printf "Unsupported os=%s" .chezmoi.os) }}
 {{ end -}}
 
+[secret]
+    command = "sops"
+    args = ["--decrypt", "--output-type=json", {{ (joinPath .chezmoi.sourceDir "secrets.yaml") | quote }}]
+

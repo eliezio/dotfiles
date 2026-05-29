@@ -121,11 +121,16 @@ fi
 log_step "Check for required bootstrap binaries..."
 CHEZMOI=$(get_chezmoi)
 SOPS=$(get_sops)
-# SOPS isn't invoked by apply.sh itself anymore (run_onchange_after_gh_setup
-# calls it at runtime), but we still need it on PATH because chezmoi-managed
-# scripts will invoke it before the package manager installs it system-wide.
+# chezmoi invokes sops at template-render time (via [secret] command = "sops"),
+# so it must be on PATH before `chezmoi apply` and before the package manager
+# installs it system-wide.
 SOPS_BIN_DIR=$(dirname "$SOPS")
 pathadd "$SOPS_BIN_DIR"
+# sops needs the age identity; standardise on the XDG path (sops's default on
+# macOS is ~/Library/Application Support/sops/age/keys.txt). chezmoi's sops
+# subprocess inherits this during template rendering.
+: "${SOPS_AGE_KEY_FILE:=$HOME/.config/sops/age/keys.txt}"
+export SOPS_AGE_KEY_FILE
 
 log_step "Initializing chezmoi config..."
 "$CHEZMOI" --source "$SOURCE_DIR" init --force

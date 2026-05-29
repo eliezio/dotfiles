@@ -12,7 +12,7 @@ Guidance for AI coding agents working in this repository.
 - `./apply.sh` — first-machine bootstrap. Downloads chezmoi + sops into `.cache/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
 - `sops edit secrets.yaml` — edit secrets (single sops-encrypted file).
 - `chezmoi execute-template < FILE.tmpl` — render a template against current data. Use this to debug template logic before applying.
-- `chezmoi diff` — preview pending changes. **Silent: never invokes sops.** Secret decryption happens at apply-time inside `run_onchange_after_gh_setup.sh.tmpl`.
+- `chezmoi diff` — preview pending changes. **Invokes sops** (and so needs the age key) because templates decrypt at render time via `[secret] command = "sops"`. The rendered gh-setup script — including the plaintext token — shows in the diff.
 - `bash -n FILE.sh` / `zsh -n FILE.zsh` — syntax-check shell scripts. Recommended after every edit.
 
 ### Testing in containers
@@ -51,7 +51,7 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 2. Sources `scripts/lib/log.sh` (colored `log_*` helpers) and `scripts/lib/github.sh` (`get_github_release` for cached binary downloads).
 3. Builds the trust bundle at `~/.local/share/certs/trust-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `NIX_SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
 4. Downloads chezmoi + sops binaries to `.cache/` (early-out if already on PATH).
-5. `chezmoi init --force`, then `exec chezmoi apply` — templates are pure (no template-time sops).
+5. Exports `SOPS_AGE_KEY_FILE` (XDG path) so chezmoi's secret subprocess can decrypt during rendering, then `chezmoi init --force` and `exec chezmoi apply`.
 
 **Platform branching** uses `os_like` ∈ {`macos`, `arch`, `debian`}:
 
@@ -78,8 +78,9 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 
 - `secrets.yaml` is sops-encrypted to a single age recipient. The recipient list is declared in `.sops.yaml`.
 - The age identity (`~/.config/sops/age/keys.txt`) is **user-managed**: restored from a password manager on each new machine. The private key never enters the repo.
-- Templates are pure — no sops invocation at template-resolution time. `chezmoi diff` / `status` / `cat` never touch sops.
-- `run_onchange_after_gh_setup.sh.tmpl` calls `sops --decrypt --extract '["GITHUB_TOKEN"]' …` at script-execution time and pipes the token into `gh auth login --with-token`. Sets `SOPS_AGE_KEY_FILE` explicitly to the XDG path, since sops's default on macOS is `~/Library/Application Support/sops/age/keys.txt`. The `run_onchange_` prefix means chezmoi only re-runs the script when its rendered hash changes; the rendered body embeds the sha256 of `secrets.yaml`'s ciphertext so re-encryption (e.g. after `sops edit`, which is when token rotation actually happens) triggers a re-run. Manual recovery (e.g. token revoked server-side without a `sops edit`): run the script directly, or `sops edit` and save without changes to force re-encryption.
+- Decryption happens at **template-render time** via chezmoi's secret function: `[secret] command = "sops"` (in `.chezmoi.toml.tmpl`) wires up the `secret`/`secretJSON` template functions to shell out to sops. Consequence: any template operation that renders the gh-setup script — `chezmoi apply` / `diff` / `status` / `execute-template` — invokes sops and **requires the age key**, and the **plaintext token appears in rendered output** (chezmoi does not redact secret-function results).
+- `SOPS_AGE_KEY_FILE` must be in chezmoi's environment for the sops subprocess to find the key (sops's default on macOS is `~/Library/Application Support/sops/age/keys.txt`, not the XDG path this repo uses). It's exported in `dot_zsh/integrations/sops.zsh` for interactive runs and in `apply.sh` for the bootstrap run.
+- `run_onchange_after_gh_setup.sh.tmpl` reads the token with `secretJSON "-d" "--output-type=json" secrets.yaml` and feeds it to `gh auth login --with-token` via a here-string. The `run_onchange_` prefix means chezmoi re-runs the script when its rendered body changes — and since the body embeds the token value, **rotation re-triggers it automatically** (re-encryption alone, without a value change, does not).
 
 ## Conventions
 

@@ -11,16 +11,9 @@ set -euo pipefail
 
 {{ include "scripts/lib/log.sh" }}
 
-SECRETS_FILE={{ joinPath .chezmoi.sourceDir "secrets.yaml" | quote }}
-# sops's default key path on macOS is ~/Library/Application Support/sops/age/keys.txt;
-# we standardise on the XDG path across all OSes.
-: "${SOPS_AGE_KEY_FILE:=$HOME/.config/sops/age/keys.txt}"
-export SOPS_AGE_KEY_FILE
-
 if (( $+commands[gh] )); then
   log_step "gh auth login..."
-  sops --decrypt --extract '["GITHUB_TOKEN"]' "$SECRETS_FILE" \
-    | gh auth login --with-token
+  gh auth login --with-token <<< {{ (secretJSON).GITHUB_TOKEN | quote }}
   log_success "gh auth login successful"
 
   log_step "Install gh extensions..."

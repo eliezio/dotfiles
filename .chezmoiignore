@@ -1,12 +1,8 @@
 **/lazy-lock.json
 user.yaml
 secrets.yaml
-.sops.yaml
 mise.toml
 apply.sh
-gh_setup.sh
-.cache/
-.claude/
 docs/
 CLAUDE.md
 AGENTS.md
