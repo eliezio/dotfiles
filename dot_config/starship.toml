@@ -2,7 +2,7 @@
 
 add_newline = false
 
-format = "$directory$os$git_branch$git_state$git_status$line_break$character"
+format = "$os$directory$git_branch$git_state$git_status$line_break$character"
 right_format = "$cmd_duration"
 
 [os]
