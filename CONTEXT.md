@@ -25,6 +25,10 @@ After bootstrap, the user runs `chezmoi apply` directly. No wrapper. Templates a
 The user-managed file at `~/.config/sops/age/keys.txt`, restored from a password manager on each new machine. It is the **sole** identity that can decrypt `secrets.yaml`. The repo never sees the private key. `.sops.yaml` lists only the corresponding public key as a recipient.
 _Note_: On macOS, sops's default lookup path is `~/Library/Application Support/sops/age/keys.txt`. We standardise on the XDG path across all OSes and `run_onchange_after_gh_setup.sh.tmpl` sets `SOPS_AGE_KEY_FILE` explicitly.
 
+**`clip`**:
+The POSIX-sh wrapper at `~/.local/bin/clip` that picks a clipboard backend at invocation time: SSH/WSL/container → `lemonade`; macOS → system `pbcopy`/`pbpaste`; Linux → `xclip`. Exists because a single machine can be used both at the console and over SSH, so the backend can't be decided at chezmoi-apply time. Lazygit calls it directly; the `pbcopy`/`pbpaste` shell aliases route through it on all platforms. See `docs/adr/0001-clipboard-wrapper.md`.
+_Avoid_: clipboard wrapper, clipcopy/clippaste (those are OMZ's zsh functions, deliberately not used here).
+
 **gh setup script**:
 `run_onchange_after_gh_setup.sh.tmpl` configures `gh` post-install: re-auths via the decrypted GITHUB_TOKEN, installs the `gh-dash` extension. The `run_onchange_` prefix means it only re-runs when its rendered body's hash changes; the rendered body embeds the sha256 of `secrets.yaml`'s ciphertext, so re-encryption (`sops edit`) — which is when token rotation actually happens — triggers a re-run. Plain `chezmoi apply` is a no-op for this script when the ciphertext hasn't changed.
 

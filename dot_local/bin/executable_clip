@@ -1,0 +1,65 @@
+#!/bin/sh
+# clip: clipboard wrapper.
+# SSH/WSL/container → lemonade; macOS → pbcopy/pbpaste; else → xclip.
+
+set -eu
+
+is_remote() {
+    if [ -n "${SSH_CONNECTION:-}" ] \
+       || [ -n "${SSH_TTY:-}" ] \
+       || [ -n "${SSH_CLIENT:-}" ] \
+       || [ -n "${WSL_DISTRO_NAME:-}" ] \
+       || [ -n "${container:-}" ] \
+       || [ -e /.dockerenv ] \
+       || [ -e /run/.containerenv ]; then
+        return 0
+    fi
+    return 1
+}
+
+do_copy() {
+    if is_remote; then
+        lemonade copy
+    elif [ "$(uname -s)" = Darwin ]; then
+        pbcopy
+    elif command -v xclip >/dev/null 2>&1; then
+        xclip -selection clipboard -i
+    else
+        echo "clip: no clipboard backend available" >&2
+        exit 1
+    fi
+}
+
+do_paste() {
+    if is_remote; then
+        lemonade paste
+    elif [ "$(uname -s)" = Darwin ]; then
+        pbpaste
+    elif command -v xclip >/dev/null 2>&1; then
+        xclip -selection clipboard -o
+    else
+        echo "clip: no clipboard backend available" >&2
+        exit 1
+    fi
+}
+
+cmd=${1:-}
+[ -n "$cmd" ] || { echo "usage: clip copy [TEXT] | clip paste" >&2; exit 2; }
+shift
+
+case "$cmd" in
+    copy)
+        if [ $# -gt 0 ]; then
+            printf %s "$*" | do_copy
+        else
+            do_copy
+        fi
+        ;;
+    paste)
+        do_paste
+        ;;
+    *)
+        echo "clip: unknown subcommand '$cmd'" >&2
+        exit 2
+        ;;
+esac
