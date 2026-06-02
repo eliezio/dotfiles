@@ -1,3 +1,6 @@
+typeset -U path PATH
+path=(~/.local/bin $path)
+
 {{- if eq .os_like "debian" }}
 if [[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
   source "$HOME/.nix-profile/etc/profile.d/nix.sh"
