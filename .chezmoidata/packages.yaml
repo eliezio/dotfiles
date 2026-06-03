@@ -111,6 +111,8 @@ packages:
       description: Process YAML, JSON, XML, CSV and properties documents from the CLI
       nix: yq-go
     #- name: yt-dlp  # excluded as it depends on deno, whose build significantly slows down installation
+    - name: zip
+      description: Compression and file packaging/archive utility
     - name: zoxide
       description: Shell extension to navigate your filesystem faster
   gui:
