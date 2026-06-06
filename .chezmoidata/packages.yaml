@@ -37,6 +37,8 @@ packages:
       description: Git extension for versioning large file
     - name: glab
       description: Open-source GitLab command-line tool
+    - name: go
+      description: Open source programming language to build simple/reliable/efficient software
     - name: httpie
       description: User-friendly cURL replacement (command-line HTTP client)
     - name: ijq

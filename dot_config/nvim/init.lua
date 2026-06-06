@@ -688,7 +688,7 @@ do
   local servers = {
     bashls = {},
     -- clangd = {},
-    -- gopls = {},
+    gopls = {},
     pyright = {},
     -- rust_analyzer = {},
     --
