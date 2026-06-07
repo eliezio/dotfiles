@@ -3,6 +3,7 @@ user.yaml
 secrets.yaml
 mise.toml
 apply.sh
+reset-secrets.sh
 docs/
 CLAUDE.md
 AGENTS.md

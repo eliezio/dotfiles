@@ -26,8 +26,19 @@ CACHE_DIR="$SOURCE_DIR/.cache"
 
 # shellcheck source=scripts/lib/log.sh
 source "$SOURCE_DIR/scripts/lib/log.sh"
-# shellcheck source=scripts/lib/github.sh
-source "$SOURCE_DIR/scripts/lib/github.sh"
+# Platform detection for cache isolation across bind-mounted volumes.
+case "$(uname -s)" in
+  Darwin) os=darwin ;;
+  Linux)  os=linux ;;
+  *)      log_error "Unsupported OS: $(uname -s)"; exit 1 ;;
+esac
+case "$(uname -m)" in
+  x86_64)        arch=amd64 ;;
+  aarch64|arm64) arch=arm64 ;;
+  *)             log_error "Unsupported arch: $(uname -m)"; exit 1 ;;
+esac
+PLATFORM_CACHE_DIR="$CACHE_DIR/${os}_${arch}"
+mkdir -p "$PLATFORM_CACHE_DIR"
 
 TMP_CONFIG_HOME=$(mktemp -d)
 export TMP_CONFIG_HOME
@@ -80,28 +91,46 @@ amend_bin_path() {
   esac
 }
 
-get_chezmoi() {
-  local -A _cfg=(
-    [org]="twpayne"
-    [name]="chezmoi"
-    [version]="2.70.3"
-    [asset_basename]="{name}_{version}_{os}_{arch}"
-    [asset_type]="tgz"
-    [min_version]="2.36"
-  )
-  get_github_release _cfg
+# Bootstrap eget (download release asset tool) if not already available.
+bootstrap_eget() {
+  if command -v eget &>/dev/null; then
+    return
+  fi
+  if [[ -x "$PLATFORM_CACHE_DIR/eget" ]]; then
+    pathadd "$PLATFORM_CACHE_DIR"
+    return
+  fi
+  log_info "Bootstrapping eget..."
+  curl -fsSL https://zyedidia.github.io/eget.sh | sh
+  mv eget "$PLATFORM_CACHE_DIR/eget"
+  pathadd "$PLATFORM_CACHE_DIR"
 }
 
-get_sops() {
-  local -A _cfg=(
-    [org]="getsops"
-    [name]="sops"
-    [version]="3.13.0"
-    [asset_basename]="{name}-v{version}.{os}.{arch}"
-    [asset_type]="bin"
-    [min_version]="3.10"
-  )
-  get_github_release _cfg
+# Ensure a binary is available: use system PATH if present, otherwise
+# download via eget into PLATFORM_CACHE_DIR.
+# Remaining arguments are asset-filter substrings; each is expanded to
+# `--asset FILTER`.
+ensure_binary() {
+  local name="$1"
+  local repo="$2"
+  local tag="$3"
+  shift 3
+
+  if command -v "$name" &>/dev/null; then
+    echo "$name"
+    return
+  fi
+  if [[ -x "$PLATFORM_CACHE_DIR/$name" ]]; then
+    echo "$PLATFORM_CACHE_DIR/$name"
+    return
+  fi
+  log_info "Downloading $name $tag via eget..."
+  local -a asset_args=()
+  for filter in "$@"; do
+    asset_args+=(--asset "$filter")
+  done
+  eget --system "${os}/${arch}" --to "$PLATFORM_CACHE_DIR/" --tag "$tag" -q "$repo" "${asset_args[@]}"
+  echo "$PLATFORM_CACHE_DIR/$name"
 }
 
 amend_bin_path
@@ -119,8 +148,9 @@ else
 fi
 
 log_step "Check for required bootstrap binaries..."
-CHEZMOI=$(get_chezmoi)
-SOPS=$(get_sops)
+bootstrap_eget
+CHEZMOI=$(ensure_binary chezmoi twpayne/chezmoi v2.70.3 ^.sbom ^glibc ^musl .tar.gz)
+SOPS=$(ensure_binary sops getsops/sops v3.13.0 ^.sbom)
 # chezmoi invokes sops at template-render time (via [secret] command = "sops"),
 # so it must be on PATH before `chezmoi apply` and before the package manager
 # installs it system-wide.

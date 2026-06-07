@@ -9,7 +9,7 @@ Guidance for AI coding agents working in this repository.
 ## Common Commands
 
 - `chezmoi apply` — daily command. Works directly on any already-bootstrapped machine.
-- `./apply.sh` — first-machine bootstrap. Downloads chezmoi + sops into `.cache/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
+- `./apply.sh` — first-machine bootstrap. Downloads `eget` + chezmoi + sops into `.cache/${os}_${arch}/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
 - `sops edit secrets.yaml` — edit secrets (single sops-encrypted file).
 - `chezmoi execute-template < FILE.tmpl` — render a template against current data. Use this to debug template logic before applying.
 - `chezmoi diff` — preview pending changes. **Invokes sops** (and so needs the age key) because templates decrypt at render time via `[secret] command = "sops"`. The rendered gh-setup script — including the plaintext token — shows in the diff.
@@ -48,9 +48,9 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 **Bootstrap flow (`apply.sh`)** — first-machine only; after that, use bare `chezmoi apply`.
 
 1. Self-execs into bash 5+ (macOS ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5). **Don't introduce bash-5-only constructs above the self-exec block (lines 14–21)** — that code still runs under 3.2 on a clean macOS.
-2. Sources `scripts/lib/log.sh` (colored `log_*` helpers) and `scripts/lib/github.sh` (`get_github_release` for cached binary downloads).
+2. Sources `scripts/lib/log.sh` (colored `log_*` helpers). Bootstraps `eget` (download release asset tool) if not on PATH, then uses `eget --to $CACHE_DIR/${os}_${arch}/` for cached binary downloads.
 3. Builds the trust bundle at `~/.local/share/certs/trust-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `NIX_SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
-4. Downloads chezmoi + sops binaries to `.cache/` (early-out if already on PATH).
+4. Downloads chezmoi + sops binaries to `.cache/${os}_${arch}/` (early-out if already on PATH).
 5. Exports `SOPS_AGE_KEY_FILE` (XDG path) so chezmoi's secret subprocess can decrypt during rendering, then `chezmoi init --force` and `exec chezmoi apply`.
 
 **Platform branching** uses `os_like` ∈ {`macos`, `arch`, `debian`}:
