@@ -101,6 +101,8 @@ packages:
       nix: tree-sitter
     - name: unzip
       description: Extraction utility for .zip compressed archives
+    - name: uv
+      description: Extremely fast Python package installer and resolver, written in Rust
     - name: wget
       description: Internet file retriever
     - name: worktrunk
