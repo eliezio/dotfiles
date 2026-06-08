@@ -2,10 +2,6 @@ packages:
   cli:
     - name: atuin
       description: Improved shell history for zsh, bash, fish and nushell
-    - name: awscli
-      description: Official Amazon AWS command-line interface
-      arch: aws-cli-v2
-      nix: awscli2
     - name: bat
       description: Clone of cat(1) with syntax highlighting and Git integration
     - name: btop
