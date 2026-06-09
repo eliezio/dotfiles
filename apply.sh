@@ -90,11 +90,8 @@ pathadd() {
   fi
 }
 
-amend_bin_path() {
-  case "$(uname -s)" in
-    Darwin) pathadd "$(brew --prefix)/bin" ;;
-    Linux)  pathadd "$HOME/.nix-profile/bin" ;;
-  esac
+add_nix_to_path() {
+  [[ "$(uname -s)" == Linux ]] && pathadd "$HOME/.nix-profile/bin"
 }
 
 # Bootstrap eget (download release asset tool) if not already available.
@@ -139,7 +136,7 @@ ensure_binary() {
   echo "$PLATFORM_CACHE_DIR/$name"
 }
 
-amend_bin_path
+add_nix_to_path
 configure_curl
 
 log_step "Build trust bundle..."

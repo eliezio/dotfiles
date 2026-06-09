@@ -47,13 +47,6 @@ pathadd() {
   fi
 }
 
-amend_bin_path() {
-  case "$(uname -s)" in
-    Darwin) pathadd "$(brew --prefix)/bin" ;;
-  esac
-}
-amend_bin_path
-
 # Bootstrap eget (download release asset tool) if not already available.
 bootstrap_eget() {
   if command -v eget &>/dev/null; then
