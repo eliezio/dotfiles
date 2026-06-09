@@ -4,14 +4,20 @@ set -euo pipefail
 # Reset secrets.yaml for a new age key.
 # For contributors who do not own the original age identity.
 
+# macOS requires Homebrew installed and configured (on PATH).
+if [[ "$(uname -s)" == Darwin ]] && ! command -v brew &>/dev/null; then
+  echo "Error: Homebrew must be installed and on PATH. See https://brew.sh" >&2
+  exit 1
+fi
+
 # log.sh needs $EPOCHREALTIME (bash 5+); macOS ships bash 3.2.
 if [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
-  if [[ -x /opt/homebrew/bin/bash ]]; then
-    exec /opt/homebrew/bin/bash "$0" "$@"
-  else
+  if [[ "$(uname -s)" == Darwin ]]; then
     echo "Error: bash 5+ required. Install via: brew install bash" >&2
-    exit 1
+  else
+    echo "Error: bash 5+ required." >&2
   fi
+  exit 1
 fi
 
 SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
@@ -40,6 +46,13 @@ pathadd() {
     PATH="$path${PATH:+:$PATH}"
   fi
 }
+
+amend_bin_path() {
+  case "$(uname -s)" in
+    Darwin) pathadd "$(brew --prefix)/bin" ;;
+  esac
+}
+amend_bin_path
 
 # Bootstrap eget (download release asset tool) if not already available.
 bootstrap_eget() {

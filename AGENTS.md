@@ -84,7 +84,7 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 
 ## Conventions
 
-- **Bash 5+ required.** `apply.sh` self-execs `/opt/homebrew/bin/bash` on macOS to satisfy this (Apple ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5).
+- **Bash 5+ required.** `apply.sh` resolves bash via `brew --prefix` (Apple ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5).
 - **`set -euo pipefail` is standard.** Under errexit:
   - **Prefer `(( ++var ))` over `(( var++ ))`** — post-increment exposes the pre-value, so the first increment when `var=0` evaluates to 0 (false) and trips errexit. Same trap for any `(( expr ))` whose result might be zero.
   - Split `export VAR=$(cmd)` into two lines (`VAR=$(cmd)` then `export VAR`) so errexit catches subcommand failures.
