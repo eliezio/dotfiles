@@ -1,8 +1,0 @@
-typeset -U path
-
-if (( ! $+commands[psql] )); then
-  local libpq_bin="{{ (output "brew" "--prefix" | trim) }}/opt/libpq/bin"
-  if [[ -d "$libpq_bin" ]]; then
-    path+=("$libpq_bin")
-  fi
-fi

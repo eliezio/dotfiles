@@ -1,0 +1,9 @@
+{{- if eq .os_like "macos" }}
+typeset -U path
+local brew_opt="{{ (output "brew" "--prefix" | trim) }}/opt"
+{{ range .brew.keg_only -}}
+[[ -d "$brew_opt/{{ . }}/bin" ]] && path=("$brew_opt/{{ . }}/bin" $path)
+{{ end -}}
+{{ else -}}
+# Left empty on non-macOS platforms
+{{- end }}
