@@ -11,25 +11,33 @@ set -euo pipefail
 
 {{ include "scripts/lib/log.sh" }}
 
-gitlab_token="{{ (secretJSON).GITLAB_TOKEN | quote }}"
+gitlab_token={{ index (secretJSON) "GITLAB_TOKEN" | default "" | quote }}
 if [[ -n "$gitlab_token" ]]; then
   log_step "glab auth login..."
   glab auth login --stdin <<< "$gitlab_token"
   log_success "glab auth login successful"
+else
+  log_info "GITLAB_TOKEN not set; skipping glab auth"
 fi
 
-github_token="{{ (secretJSON).GITHUB_TOKEN | quote }}"
+github_token={{ index (secretJSON) "GITHUB_TOKEN" | default "" | quote }}
 if [[ -n "$github_token" ]]; then
   log_step "gh auth login..."
   gh auth login --with-token <<< "$github_token"
   log_success "gh auth login successful"
+else
+  log_info "GITHUB_TOKEN not set; skipping gh auth"
 fi
 
 log_step "Install gh extensions..."
-if ! gh extension list 2>/dev/null | grep -q '\bdlvhdr/gh-dash\b'; then
-  gh extension install dlvhdr/gh-dash
+if gh auth status >/dev/null 2>&1; then
+  if ! gh extension list 2>/dev/null | grep -q '\bdlvhdr/gh-dash\b'; then
+    gh extension install dlvhdr/gh-dash
+  else
+    log_info "gh-dash already installed"
+  fi
 else
-  log_info "gh-dash already installed"
+  log_info "gh not authenticated; skipping extension install"
 fi
 
 # vim: ft=zsh
