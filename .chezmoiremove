@@ -1,3 +1,4 @@
 .antigenrc
 .p10k.zsh
 ~/.config/alacritty.toml
+~/.zsh/integrations/fastfetch.zsh
