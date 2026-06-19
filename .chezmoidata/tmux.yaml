@@ -5,7 +5,7 @@ tmux_plugins:
     version: v3.0.0
   - name: catppuccin
     repo: catppuccin/tmux
-    version: v2.1.3
+    version: v2.3.0
   - name: pomodoro
     repo: olimorris/tmux-pomodoro-plus
     version: v1.0.2
