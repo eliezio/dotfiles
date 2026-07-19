@@ -15,6 +15,8 @@ packages:
       arch: git-delta
     - name: diffnav
       description: Git diff pager based on delta but with a file tree
+    - name: doggo
+      description: Command-line DNS Client for Humans
     - name: fastfetch
       description: Like neofetch, but much faster because written mostly in C
     - name: fd
