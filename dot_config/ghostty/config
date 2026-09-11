@@ -1,0 +1,9 @@
+font-family = "FiraMono Nerd Font"
+font-size = 24
+
+keybind = cmd+up=unbind
+keybind = cmd+left=unbind
+keybind = cmd+right=unbind
+keybind = cmd+down=unbind
+
+command = /opt/homebrew/bin/herdr

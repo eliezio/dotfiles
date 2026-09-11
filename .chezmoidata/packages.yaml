@@ -121,9 +121,6 @@ packages:
     - name: zoxide
       description: Shell extension to navigate your filesystem faster
   gui:
-    - name: alacritty
-      description: GPU-accelerated terminal emulator
-      brew_cask: true
     - name: font-jetbrains-mono-nerd-font
       description: JetBrainsMono Nerd Font families (JetBrains Mono)
       arch: ttf-jetbrains-mono-nerd
@@ -134,6 +131,9 @@ packages:
       arch: otf-firamono-nerd
       brew_cask: true
       nix: nerd-fonts.fira-mono
+    - name: ghostty
+      description: Terminal emulator that uses platform-native UI and GPU acceleration
+      brew_cask: true
   system:
     brew:
       - openssh
