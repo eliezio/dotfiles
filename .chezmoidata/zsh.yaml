@@ -12,6 +12,7 @@ omz_platform_plugins:
   debian: debian
 omz_plugins:
   - aws
+  - direnv
   - docker
   - docker-compose
   - fabric
