@@ -1,0 +1,15 @@
+services:
+  dotfiles2:
+    build: .
+    environment:
+      USER: debian
+    volumes:
+      - type: bind
+        source: $PWD/../..
+        target: /home/debian/.local/share/chezmoi
+      - type: bind
+        source: $HOME/.config/sops/age/keys.txt
+        target: /home/debian/.config/sops/age/keys.txt
+        read_only: true
+    command: [ "sleep", "infinity" ]
+    working_dir: /home/debian/.local/share/chezmoi

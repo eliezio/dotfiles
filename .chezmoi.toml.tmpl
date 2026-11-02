@@ -1,14 +1,23 @@
+{{- /* Sticky: DOTFILES_SKIP_CERTS=1/0 (set by apply.sh --skip-certs) changes it;
+       otherwise the value from the previous init is kept. */ -}}
+{{- $skipCerts := get . "skip_certs" | default false -}}
+{{- if eq (env "DOTFILES_SKIP_CERTS") "1" }}{{ $skipCerts = true }}{{ end -}}
+{{- if eq (env "DOTFILES_SKIP_CERTS") "0" }}{{ $skipCerts = false }}{{ end }}
 [data]
+skip_certs = {{ $skipCerts }}
 is_container = {{ or (ne (stat "/.dockerenv") nil) (ne (stat "/run/.containerenv") nil) (ne (env "container") "") }}
 {{ if eq .chezmoi.os "darwin" -}}
 os_like = "macos"
 {{ else if eq .chezmoi.os "linux" -}}
-{{ if (or (eq .chezmoi.osRelease.idLike "arch") (eq .chezmoi.osRelease.idLike "manjaro arch")) -}}
+{{ $idLike := get .chezmoi.osRelease "idLike" | default "" -}}
+{{ if (or (eq $idLike "arch") (eq $idLike "manjaro arch")) -}}
 os_like = "arch"
-{{ else if eq .chezmoi.osRelease.idLike "debian" -}}
+{{ else if (or (eq .chezmoi.osRelease.id "debian") (eq $idLike "debian")) -}}
 os_like = "debian"
+{{ else if (or (eq .chezmoi.osRelease.id "fedora") (eq $idLike "fedora")) -}}
+os_like = "fedora"
 {{ else }}
-{{ fail (printf "Unsupported Linux Distribution: id='%s', idLike='%s'" .chezmoi.osRelease.id .chezmoi.osRelease.idLike) }}
+{{ fail (printf "Unsupported Linux Distribution: id='%s', idLike='%s'" .chezmoi.osRelease.id $idLike) }}
 {{ end -}}
 {{ else }}
 {{ fail (printf "Unsupported os=%s" .chezmoi.os) }}

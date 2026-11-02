@@ -26,8 +26,24 @@ if [[ "${BASH_VERSINFO[0]}" -lt 5 ]]; then
   exit 1
 fi
 
+# Never create group/world-writable files, even under a umask-0000 parent
+# (e.g. OrbStack's `docker exec`); keeps stricter umasks such as 077.
+umask "$(printf '%04o' $(( 8#$(umask) | 8#022 )))"
+
 SOURCE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 export SOURCE_DIR
+
+# --skip-certs leaves the custom CAs out: no trust bundle, no system trust
+# store, nothing in ~/.local/share/certs. chezmoi's config remembers it
+# (skip_certs); `DOTFILES_SKIP_CERTS=0 ./apply.sh` turns certs back on.
+# Every other argument goes to `chezmoi apply`.
+APPLY_ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    --skip-certs) export DOTFILES_SKIP_CERTS=1 ;;
+    *)            APPLY_ARGS+=("$arg") ;;
+  esac
+done
 CACHE_DIR="$SOURCE_DIR/.cache"
 
 # shellcheck source=scripts/lib/log.sh
@@ -83,6 +99,15 @@ trust_build_bundle() {
   } > "$TRUST_BUNDLE_FILE"
 }
 
+# Explicit DOTFILES_SKIP_CERTS wins; otherwise keep what the last init chose.
+skip_certs() {
+  case "${DOTFILES_SKIP_CERTS:-}" in
+    1) return 0 ;;
+    0) return 1 ;;
+  esac
+  grep -qsx 'skip_certs = true' "${XDG_CONFIG_HOME:-$HOME/.config}/chezmoi/chezmoi.toml"
+}
+
 pathadd() {
   local path="$1"
   if [[ ":$PATH:" != *":$path:"* ]]; then
@@ -90,70 +115,28 @@ pathadd() {
   fi
 }
 
-add_nix_to_path() {
-  [[ "$(uname -s)" == Linux ]] && pathadd "$HOME/.nix-profile/bin"
-}
+# shellcheck source=scripts/lib/pinned.sh
+source "$SOURCE_DIR/scripts/lib/pinned.sh"
 
-# Bootstrap eget (download release asset tool) if not already available.
-bootstrap_eget() {
-  if command -v eget &>/dev/null; then
-    return
-  fi
-  if [[ -x "$PLATFORM_CACHE_DIR/eget" ]]; then
-    pathadd "$PLATFORM_CACHE_DIR"
-    return
-  fi
-  log_info "Bootstrapping eget..."
-  curl -fsSL https://zyedidia.github.io/eget.sh | sh
-  mv eget "$PLATFORM_CACHE_DIR/eget"
-  pathadd "$PLATFORM_CACHE_DIR"
-}
-
-# Ensure a binary is available: use system PATH if present, otherwise
-# download via eget into PLATFORM_CACHE_DIR.
-# Remaining arguments are asset-filter substrings; each is expanded to
-# `--asset FILTER`.
-ensure_binary() {
-  local name="$1"
-  local repo="$2"
-  local tag="$3"
-  shift 3
-
-  if command -v "$name" &>/dev/null; then
-    echo "$name"
-    return
-  fi
-  if [[ -x "$PLATFORM_CACHE_DIR/$name" ]]; then
-    echo "$PLATFORM_CACHE_DIR/$name"
-    return
-  fi
-  log_info "Downloading $name $tag via eget..."
-  local -a asset_args=()
-  for filter in "$@"; do
-    asset_args+=(--asset "$filter")
-  done
-  eget --system "${os}/${arch}" --to "$PLATFORM_CACHE_DIR/" --tag "$tag" -q "$repo" "${asset_args[@]}"
-  echo "$PLATFORM_CACHE_DIR/$name"
-}
-
-add_nix_to_path
 configure_curl
 
 log_step "Build trust bundle..."
-trust_build_bundle
-if [[ -s "$TRUST_BUNDLE_FILE" ]]; then
-  export SSL_CERT_FILE="$TRUST_BUNDLE_FILE"
-  export NIX_SSL_CERT_FILE="$TRUST_BUNDLE_FILE"
-  export CURL_CA_BUNDLE="$TRUST_BUNDLE_FILE"
-  log_info "Using trust bundle at $TRUST_BUNDLE_FILE"
+if skip_certs; then
+  log_info "Skipping certificates (skip_certs); using system CA bundle"
 else
-  log_info "No trust roots; using system CA bundle"
+  trust_build_bundle
+  if [[ -s "$TRUST_BUNDLE_FILE" ]]; then
+    export SSL_CERT_FILE="$TRUST_BUNDLE_FILE"
+    export CURL_CA_BUNDLE="$TRUST_BUNDLE_FILE"
+    log_info "Using trust bundle at $TRUST_BUNDLE_FILE"
+  else
+    log_info "No trust roots; using system CA bundle"
+  fi
 fi
 
 log_step "Check for required bootstrap binaries..."
-bootstrap_eget
-CHEZMOI=$(ensure_binary chezmoi twpayne/chezmoi v2.70.3 ^.sbom ^glibc ^musl .tar.gz)
-SOPS=$(ensure_binary sops getsops/sops v3.13.0 ^.sbom)
+CHEZMOI=$(ensure_binary chezmoi)
+SOPS=$(ensure_binary sops)
 # chezmoi invokes sops at template-render time (via [secret] command = "sops"),
 # so it must be on PATH before `chezmoi apply` and before the package manager
 # installs it system-wide.
@@ -170,4 +153,4 @@ log_step "Initializing chezmoi config..."
 
 log_step "chezmoi apply..."
 export LOG_STEP_PREFIX="$LOG_STEP_NUM"
-exec "$CHEZMOI" --source "$SOURCE_DIR" apply "$@"
+exec "$CHEZMOI" --source "$SOURCE_DIR" apply "${APPLY_ARGS[@]}"

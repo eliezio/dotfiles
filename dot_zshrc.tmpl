@@ -1,11 +1,6 @@
 typeset -U path PATH
 path=(~/.local/bin $path)
 
-{{- if eq .os_like "debian" }}
-if [[ -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
-  source "$HOME/.nix-profile/etc/profile.d/nix.sh"
-fi
-{{ end }}
 ZSH_PLUGINS=~/.zsh-plugins
 OMZ=$ZSH_PLUGINS/oh-my-zsh
 ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh"

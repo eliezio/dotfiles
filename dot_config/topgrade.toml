@@ -101,6 +101,10 @@ disable = ["containers", "firmware", "gem", "tlmgr", "ruby_gems"]
 # Commands to run after anything
 [post_commands]
 # "Emacs Snapshot" = "rm -rf ~/.emacs.d/elpa.bak && cp -rl ~/.emacs.d/elpa ~/.emacs.d/elpa.bak"
+# Red-flag report over what the mise step just upgraded. Fails the step only on
+# red (exit 2); amber (exit 1) is reported but tolerated. Auto-install is off so
+# one tool failing to install can't block the report.
+"mise audit" = "MISE_TASK_RUN_AUTO_INSTALL=false mise run audit || test $? -lt 2"
 
 
 # Custom commands

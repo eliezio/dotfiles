@@ -1,0 +1,275 @@
+#!/usr/bin/env -S uv run --quiet --script
+#MISE description="Red-flag report over the globally configured mise tools"
+# /// script
+# requires-python = ">=3.11"
+# ///
+"""
+Audit the tools in the global mise config for supply-chain red flags.
+
+Read-only except for the identity pin file. Per tool it checks:
+  - upstream health: archived repo, age of the latest release, last push,
+    OpenSSF Scorecard `Maintained`;
+  - repo identity: the repo/owner ids are pinned on first run, and a later
+    owner change (the takeover vector) or rename is flagged;
+  - verification posture: what `mise tool --json` reports in `security`;
+  - runtime end-of-life for core `go`/`node` (endoflife.date);
+  - `mise outdated`.
+CVE scanning of the installed binaries is not covered yet.
+
+Thresholds follow ~/tmp/research/mise-tool-audit.md §4.6. Exit status: 2 if
+any tool is red, 1 if any is amber, else 0. Needs a GitHub token for its ~90
+API calls (60/h without one): $GITHUB_TOKEN, else `gh auth token`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "mise-audit"
+IDENTITY_FILE = STATE_DIR / "identity.json"
+NOW = datetime.now(timezone.utc)
+
+# pipx packages don't name their source repo in the backend id.
+PIPX_REPOS = {"pgcli": "dbcli/pgcli"}
+# core tools are judged by runtime end-of-life, not repo health.
+EOL_PRODUCTS = {"go": "go", "node": "nodejs"}
+
+RED, AMBER, GREEN = 2, 1, 0
+LEVEL_NAMES = {RED: "RED", AMBER: "AMBER", GREEN: "GREEN"}
+
+
+@dataclass
+class Finding:
+    tool: str
+    version: str | None
+    level: int = GREEN
+    notes: list[str] = field(default_factory=list)
+
+    def flag(self, level: int, note: str) -> None:
+        self.level = max(self.level, level)
+        self.notes.append(note)
+
+
+class Http:
+    def __init__(self, github_token: str | None):
+        self.github_token = github_token
+
+    def get(self, url: str) -> tuple[int, dict | list | None, str]:
+        """GET JSON. Returns (status, body, final_url); body is None on error."""
+        req = urllib.request.Request(url, headers={"Accept": "application/json",
+                                                   "User-Agent": "mise-audit"})
+        if self.github_token and url.startswith("https://api.github.com/"):
+            req.add_header("Authorization", f"Bearer {self.github_token}")
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return resp.status, json.load(resp), resp.url
+        except urllib.error.HTTPError as e:
+            return e.code, None, url
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+            return 0, None, url
+
+
+def months_since(iso: str | None) -> float | None:
+    if not iso:
+        return None
+    when = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    return (NOW - when).days / 30.44
+
+
+def github_token() -> str | None:
+    if token := os.environ.get("GITHUB_TOKEN"):
+        return token
+    try:
+        out = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, check=True)
+        return out.stdout.strip() or None
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def mise_json(*args: str):
+    out = subprocess.run(["mise", *args, "--json"], capture_output=True, text=True, check=True)
+    return json.loads(out.stdout or "null")
+
+
+def upstream(backend: str) -> tuple[str, str] | None:
+    """Map a mise backend id to (forge, owner/repo). None if not repo-backed."""
+    kind, _, ident = backend.partition(":")
+    if kind in ("aqua", "github"):
+        # aqua ids are <owner>/<repo>[/<subpackage>], named after the GitHub repo.
+        return "github", "/".join(ident.split("/")[:2])
+    if kind == "gitlab":
+        return "gitlab", ident
+    if kind == "pipx" and ident in PIPX_REPOS:
+        return "github", PIPX_REPOS[ident]
+    if kind == "go":
+        host, _, path = ident.partition("/")
+        repo = "/".join(path.split("/")[:2])
+        return {"github.com": ("github", repo), "codeberg.org": ("codeberg", repo)}.get(host)
+    return None
+
+
+def check_github(repo: str, f: Finding, http: Http, identities: dict) -> None:
+    status, info, final_url = http.get(f"https://api.github.com/repos/{repo}")
+    if info is None:
+        f.flag(AMBER, f"github {repo}: HTTP {status}")
+        return
+    if info["archived"]:
+        f.flag(RED, "repo archived")
+    check_identity(repo, info, f, identities)
+    _, rel, _ = http.get(f"https://api.github.com/repos/{repo}/releases/latest")
+    judge_activity(f, rel.get("published_at") if isinstance(rel, dict) else None, info.get("pushed_at"))
+    _, card, _ = http.get(f"https://api.scorecard.dev/projects/github.com/{repo}")
+    if isinstance(card, dict):
+        maintained = next((c["score"] for c in card.get("checks", []) if c["name"] == "Maintained"), None)
+        if maintained == 0:
+            f.flag(AMBER, "Scorecard Maintained=0")
+
+
+def check_identity(repo: str, info: dict, f: Finding, identities: dict) -> None:
+    current = {"id": info["id"], "owner_id": info["owner"]["id"], "full_name": info["full_name"]}
+    pinned = identities.get(repo)
+    if pinned is None:
+        identities[repo] = current
+    elif pinned["owner_id"] != current["owner_id"]:
+        f.flag(RED, f"owner changed: {pinned['full_name']} -> {current['full_name']} (review, then --accept-identity)")
+    elif pinned["id"] != current["id"]:
+        f.flag(RED, f"different repo behind {repo} (deleted and recreated?)")
+    elif pinned["full_name"] != current["full_name"]:
+        f.flag(AMBER, f"renamed: {pinned['full_name']} -> {current['full_name']}")
+
+
+def check_gitlab(project: str, f: Finding, http: Http) -> None:
+    pid = urllib.parse.quote(project, safe="")
+    _, info, _ = http.get(f"https://gitlab.com/api/v4/projects/{pid}")
+    if not isinstance(info, dict):
+        f.flag(AMBER, f"gitlab {project}: unreachable")
+        return
+    if info.get("archived"):  # only present in authenticated responses
+        f.flag(RED, "repo archived")
+    _, rels, _ = http.get(f"https://gitlab.com/api/v4/projects/{pid}/releases?per_page=1")
+    released = rels[0].get("released_at") if isinstance(rels, list) and rels else None
+    judge_activity(f, released, info.get("last_activity_at"))
+
+
+def check_codeberg(repo: str, f: Finding, http: Http) -> None:
+    _, info, _ = http.get(f"https://codeberg.org/api/v1/repos/{repo}")
+    if not isinstance(info, dict):
+        f.flag(AMBER, f"codeberg {repo}: unreachable")
+        return
+    if info.get("archived"):
+        f.flag(RED, "repo archived")
+    _, rel, _ = http.get(f"https://codeberg.org/api/v1/repos/{repo}/releases/latest")
+    judge_activity(f, rel.get("published_at") if isinstance(rel, dict) else None, info.get("updated_at"))
+
+
+def judge_activity(f: Finding, released: str | None, pushed: str | None) -> None:
+    rel_age, push_age = months_since(released), months_since(pushed)
+    if rel_age is None:
+        f.flag(AMBER, "no releases found")
+    elif rel_age > 24:
+        level = RED if push_age is not None and push_age > 12 else AMBER
+        f.flag(level, f"last release {released[:7]} (>24mo)")
+    elif rel_age > 12:
+        f.flag(AMBER, f"last release {released[:7]} (>12mo)")
+    if push_age is not None and push_age > 6:
+        f.flag(AMBER, f"last push {pushed[:7]} (>6mo)")
+
+
+def check_eol(product: str, version: str | None, f: Finding, http: Http) -> None:
+    if not version:
+        return
+    _, body, _ = http.get(f"https://endoflife.date/api/v1/products/{product}")
+    releases = body.get("result", {}).get("releases", []) if isinstance(body, dict) else []
+    cycle = next((r for r in releases if version == r["name"] or version.startswith(r["name"] + ".")), None)
+    if cycle is None:
+        f.flag(AMBER, f"{product} {version}: release cycle not found on endoflife.date")
+    elif cycle.get("isEol"):
+        f.flag(RED, f"{product} {cycle['name']} is end-of-life since {cycle.get('eolFrom')}")
+    elif cycle.get("eolFrom") and (datetime.fromisoformat(cycle["eolFrom"]).replace(tzinfo=timezone.utc) - NOW).days < 90:
+        f.flag(AMBER, f"{product} {cycle['name']} reaches end-of-life on {cycle['eolFrom']}")
+
+
+def check_verification(backend: str, f: Finding) -> None:
+    if backend in EOL_PRODUCTS:
+        return  # core tools verify with their own upstream checksums/signatures
+    try:
+        security = mise_json("tool", backend).get("security") or []
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        f.flag(AMBER, "mise tool --json failed")
+        return
+    kinds = {s.get("type") for s in security}
+    if not security:
+        f.flag(AMBER, "no download verification (HTTPS only)")
+    elif kinds <= {"checksum"}:
+        algorithms = {s.get("algorithm") for s in security}
+        if algorithms <= {"sha1", "md5"}:
+            f.flag(AMBER, f"weak checksum only ({', '.join(sorted(map(str, algorithms)))})")
+
+
+def audit_tool(backend: str, version: str | None, http: Http, identities: dict, outdated: dict) -> Finding:
+    f = Finding(backend, version)
+    check_verification(backend, f)
+    if backend in EOL_PRODUCTS:
+        check_eol(EOL_PRODUCTS[backend], version, f, http)
+    elif (up := upstream(backend)) is None:
+        f.flag(AMBER, "no upstream repo mapping")
+    else:
+        forge, repo = up
+        {"github": lambda: check_github(repo, f, http, identities),
+         "gitlab": lambda: check_gitlab(repo, f, http),
+         "codeberg": lambda: check_codeberg(repo, f, http)}[forge]()
+    if backend in outdated:
+        f.notes.append(f"update available: {outdated[backend].get('latest')}")
+    return f
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--accept-identity", action="store_true")
+    args = parser.parse_args()
+
+    token = github_token()
+    if not token:
+        print("mise-audit: no GitHub token ($GITHUB_TOKEN or `gh auth token`); "
+              "unauthenticated limit is 60 requests/h", file=sys.stderr)
+    http = Http(token)
+
+    tools = {b: (entries[0] or {}).get("version") for b, entries in (mise_json("ls", "--global") or {}).items() if entries}
+    if not tools:
+        print("mise-audit: no tools in the global mise config", file=sys.stderr)
+        return GREEN
+    outdated = mise_json("outdated", "--global") or {}
+    identities = {} if args.accept_identity else (
+        json.loads(IDENTITY_FILE.read_text()) if IDENTITY_FILE.exists() else {})
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        findings = list(pool.map(lambda kv: audit_tool(*kv, http, identities, outdated), tools.items()))
+
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    IDENTITY_FILE.write_text(json.dumps(identities, indent=2, sort_keys=True) + "\n")
+
+    findings.sort(key=lambda f: (-f.level, f.tool))
+    if args.json:
+        print(json.dumps([{"tool": f.tool, "version": f.version, "level": LEVEL_NAMES[f.level],
+                           "notes": f.notes} for f in findings], indent=2))
+    else:
+        width = max(len(f.tool) for f in findings)
+        for f in findings:
+            print(f"{LEVEL_NAMES[f.level]:<5}  {f.tool:<{width}}  {'; '.join(f.notes)}")
+    return max((f.level for f in findings), default=GREEN)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

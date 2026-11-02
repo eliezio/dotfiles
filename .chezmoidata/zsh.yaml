@@ -10,7 +10,11 @@ omz_platform_plugins:
   macos: brew
   arch: archlinux
   debian: debian
+  fedora: dnf
+# mise must come first: it puts the mise-installed tools on PATH, and plugins
+# such as direnv and zoxide check for their binary when they load.
 omz_plugins:
+  - mise
   - aws
   - direnv
   - docker
@@ -18,7 +22,6 @@ omz_plugins:
   - fabric
   - git
   - kubectl
-  - mise
   - mvn
   - rust
   - zoxide

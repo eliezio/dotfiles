@@ -11,6 +11,10 @@ set -euo pipefail
 
 {{ include "scripts/lib/log.sh" }}
 
+# gh and glab are installed by mise; non-interactive shells don't activate it.
+path=(~/.local/bin $path)
+eval "$(mise activate zsh --shims)"
+
 gitlab_token={{ index (secretJSON) "GITLAB_TOKEN" | default "" | quote }}
 if [[ -n "$gitlab_token" ]]; then
   log_step "glab auth login..."

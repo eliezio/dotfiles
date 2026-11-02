@@ -8,20 +8,20 @@ set -euo pipefail
 # Package lists (generated from .chezmoidata/packages.yaml)
 # ---------------------------------------------------------------------------
 
-CLI_PKGS=(
-{{ range .packages.cli }}  {{ .name }}
-{{ end -}}
-)
+# CLI tools are not listed here: mise installs them after file deployment
+# (run_onchange_after_00_install_mise_tools.sh.tmpl).
 
 GUI_PKGS=(
 {{ range .packages.gui }}  {{ .name }}
 {{ end -}}
 )
 
+# install_mise (mise.run), for adapters whose platform has no fresh mise package.
+{{ include "scripts/lib/mise_run.sh" }}
+
 # Platform-specific installer adapter. Contract:
-#   install_packages CLI_REF GUI_REF  — namerefs to package-name arrays.
-#                                        Both bound on every platform.
-#   install_system_packages           — mandatory; no-op on macOS.
+#   install_system_packages           — mandatory; must leave `mise` installed.
+#   install_gui_packages GUI_REF      — nameref to a package-name array.
 {{ includeTemplate (printf "scripts/lib/%s/installer.sh" .os_like) . }}
 
 # ---------------------------------------------------------------------------
@@ -77,16 +77,20 @@ set_default_shell() {
 # Main
 # ---------------------------------------------------------------------------
 
+{{ if get . "skip_certs" -}}
+log_info "Skipping system certs (skip_certs)"
+{{ else -}}
 if [ "$(uname -s)" = "Linux" ]; then
   log_step "Install system certs"
   install_system_certs
 fi
+{{ end -}}
 
 log_step "Install system packages"
 install_system_packages
 
-log_step "Install packages"
-install_packages CLI_PKGS GUI_PKGS
+log_step "Install GUI packages"
+install_gui_packages GUI_PKGS
 
 log_step "Set default shell to zsh"
 set_default_shell

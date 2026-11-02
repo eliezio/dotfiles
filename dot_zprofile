@@ -1,0 +1,7 @@
+# Login shells, interactive or not (an IDE or desktop session reading the
+# environment), get mise's shims so its tools resolve without `mise activate`.
+# Interactive shells activate mise on top in .zshrc (omz mise plugin), which
+# puts the real tool dirs ahead of the shims. A static path, so login spawns no
+# mise process; runs after macOS's /etc/zprofile path_helper, so it stays first.
+typeset -U path PATH
+path=("${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/shims" ~/.local/bin $path)

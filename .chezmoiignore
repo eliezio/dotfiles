@@ -4,13 +4,16 @@ secrets.yaml
 mise.toml
 apply.sh
 reset-secrets.sh
+remove-legacy-packages.sh
 docs/
 CLAUDE.md
 AGENTS.md
 CONTEXT.md
 scripts/
 test/
-.config/tmux/plugins/fzf-url/bin
 {{ if ne .os_like "arch" }}
 .makepkg.conf
+{{ end }}
+{{ if get . "skip_certs" }}
+.local/share/certs
 {{ end }}

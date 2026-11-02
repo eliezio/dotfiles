@@ -1,6 +1,6 @@
 #!/bin/sh
 # clip: clipboard wrapper.
-# SSH/WSL/container → lemonade; macOS → pbcopy/pbpaste; else → xclip.
+# SSH/WSL/container → OSC 52 (copy only); macOS → pbcopy/pbpaste; else → xclip.
 
 set -eu
 
@@ -17,9 +17,18 @@ is_remote() {
     return 1
 }
 
+# OSC 52 asks the local terminal emulator to set its clipboard, so it works
+# through SSH, WSL and `docker exec` with nothing listening on either end.
+# Written to /dev/tty so it reaches the terminal even when stdout is a pipe
+# (lazygit runs `clip copy` as a subprocess).
+osc52_copy() {
+    b64=$(base64 | tr -d '\n')
+    printf '\033]52;c;%s\a' "$b64" > /dev/tty
+}
+
 do_copy() {
     if is_remote; then
-        lemonade copy
+        osc52_copy
     elif [ "$(uname -s)" = Darwin ]; then
         pbcopy
     elif command -v xclip >/dev/null 2>&1; then
@@ -32,7 +41,9 @@ do_copy() {
 
 do_paste() {
     if is_remote; then
-        lemonade paste
+        # OSC 52 reads are denied or prompted by most terminals; don't rely on them.
+        echo "clip: paste is not available in a remote session; use the terminal's paste" >&2
+        exit 1
     elif [ "$(uname -s)" = Darwin ]; then
         pbpaste
     elif command -v xclip >/dev/null 2>&1; then

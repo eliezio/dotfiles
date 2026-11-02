@@ -4,12 +4,14 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Overview
 
-[chezmoi](https://chezmoi.io)-managed dotfiles for developer machines on macOS, Manjaro/Arch, and Ubuntu/Debian. Designed to be runnable inside corporate MITM-proxy environments by injecting a custom CA bundle.
+[chezmoi](https://chezmoi.io)-managed dotfiles for developer machines on macOS, Manjaro/Arch, Ubuntu/Debian, and Aurora (atomic Fedora). Designed to be runnable inside corporate MITM-proxy environments by injecting a custom CA bundle.
 
 ## Common Commands
 
 - `chezmoi apply` — daily command. Works directly on any already-bootstrapped machine.
-- `./apply.sh` — first-machine bootstrap. Downloads `eget` + chezmoi + sops into `.cache/${os}_${arch}/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
+- `./apply.sh` — first-machine bootstrap. Downloads chezmoi + sops into `.cache/${os}_${arch}/`, builds the trust bundle, runs `chezmoi init`, then `exec`s `chezmoi apply`. After first run, prefer bare `chezmoi apply`.
+- `./apply.sh --skip-certs` — same, but leaves the custom CAs in `dot_local/share/certs/` out entirely: no trust bundle, no system trust store, nothing deployed to `~/.local/share/certs`. Stored as `skip_certs` in chezmoi's config data (sticky across `chezmoi init`); `DOTFILES_SKIP_CERTS=0 ./apply.sh` re-enables. Other arguments pass through to `chezmoi apply`.
+- `./remove-legacy-packages.sh` — one-off cleanup after moving a machine to mise: offers, one `[y/N/q]` prompt each, to remove the Homebrew / pacman / Nix-profile packages that mise tools now replace (only when mise already has the replacement installed), plus tools the dotfiles dropped (curlie, httpie, lemonade, tmux). Old names that differ from `packages.cli` names live in its `LEGACY_*` tables, dropped tools in `DROPPED_*`. chezmoi runs it once per machine via `run_once_after_10_remove_legacy_packages.sh.tmpl` (after `00_install_mise_tools`; skipped when there is no terminal, e.g. `docker exec` without `-t`).
 - `sops edit secrets.yaml` — edit secrets (single sops-encrypted file).
 - `chezmoi execute-template < FILE.tmpl` — render a template against current data. Use this to debug template logic before applying.
 - `chezmoi diff` — preview pending changes. **Invokes sops** (and so needs the age key) because templates decrypt at render time via `[secret] command = "sops"`. The rendered gh-setup script — including the plaintext token — shows in the diff.
@@ -17,12 +19,14 @@ Guidance for AI coding agents working in this repository.
 
 ### Testing in containers
 
-Smoke-test installs in throwaway containers under `test/{manjaro,ubuntu}/`:
+Smoke-test installs in throwaway containers under `test/{debian,manjaro,ubuntu}/`:
 
 ```bash
-mise run manjaro    # or: mise run ubuntu
-docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
+mise run manjaro    # or: mise run ubuntu / mise run debian
+docker compose exec dotfiles2 bash -c 'umask 022 && exec ~/.local/share/chezmoi/apply.sh'
 ```
+
+- The explicit `umask 022` works around OrbStack: its VM runs `dockerd`/`containerd`/the shims with umask `0000` (a systemd-managed `dockerd` gets `0022`), and `docker exec` processes inherit it, while runc resets only PID 1 to `0022`. Without it every file `apply.sh` creates is world-writable and zsh's `compinit` rejects `~/.zsh-plugins` as insecure. Harmless on engines that already use `0022`.
 
 - Proxy env vars and `extra_hosts: ["host.docker.internal:host-gateway"]` live in `test/compose.mitm.yaml` (overlay), not the per-distro `compose.yaml`. The `extra_hosts` line is required on Linux Docker so containers can reach the host's mitmproxy.
 - Containers bind-mount `~/.config/sops/age/keys.txt` from the host, so the host must have the age key restored before container tests work.
@@ -48,23 +52,22 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 **Bootstrap flow (`apply.sh`)** — first-machine only; after that, use bare `chezmoi apply`.
 
 1. Self-execs into bash 5+ (macOS ships bash 3.2; `$EPOCHREALTIME` in `log.sh` needs ≥5). **Don't introduce bash-5-only constructs above the self-exec block (lines 14–21)** — that code still runs under 3.2 on a clean macOS.
-2. Sources `scripts/lib/log.sh` (colored `log_*` helpers). Bootstraps `eget` (download release asset tool) if not on PATH, then uses `eget --to $CACHE_DIR/${os}_${arch}/` for cached binary downloads.
-3. Builds the trust bundle at `~/.local/share/certs/trust-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `NIX_SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
+2. Sources `scripts/lib/log.sh` (colored `log_*` helpers). Downloads chezmoi and sops with `curl` into `$CACHE_DIR/${os}_${arch}/` (skipped if on PATH or cached), and rejects any download whose SHA-256 differs from the pin in `PIN_SHA256`. Tags, pins and download functions live in `scripts/lib/pinned.sh`, shared with `reset-secrets.sh` (which also fetches age). Bumping a version means updating its tag and its four pins; the `gh api` commands that print them sit next to the table.
+3. Builds the trust bundle at `~/.local/share/certs/trust-bundle.pem` from `dot_local/share/certs/*.crt`. Exports `SSL_CERT_FILE`, `CURL_CA_BUNDLE`. No-op if no certs.
 4. Downloads chezmoi + sops binaries to `.cache/${os}_${arch}/` (early-out if already on PATH).
 5. Exports `SOPS_AGE_KEY_FILE` (XDG path) so chezmoi's secret subprocess can decrypt during rendering, then `chezmoi init --force` and `exec chezmoi apply`.
 
-**Platform branching** uses `os_like` ∈ {`macos`, `arch`, `debian`}:
+**Platform branching** uses `os_like` ∈ {`macos`, `arch`, `debian`, `fedora`}:
 
-- `.chezmoi.toml.tmpl` derives `os_like` from `chezmoi.os` + `chezmoi.osRelease.idLike`.
-- Package install is split into per-platform files at `scripts/lib/{macos,arch,debian}/installer.sh`, included by `run_once_install_packages.sh.tmpl` via `{{ includeTemplate (printf "scripts/lib/%s/installer.sh" .os_like) . }}`. Each installer file defines `SYSTEM_PKGS`, name-resolution maps, and the `install_packages` function. Backends: macOS = Homebrew (`brew bundle`); Arch = yay; Debian = apt + Nix single-user (`nix profile add nixpkgs#…`).
+- `.chezmoi.toml.tmpl` derives `os_like` from `chezmoi.os` + `chezmoi.osRelease.idLike` (plus `id` for Debian and Fedora, whose os-release has no `ID_LIKE`).
+- **CLI tools (`packages.cli`) are installed by mise on every platform**, always at `latest`. Each entry names its backend explicitly in `mise:` (prefer `aqua:`). `dot_config/mise/conf.d/packages.toml.tmpl` renders them into a global mise config (kept out of `config.toml` so `mise use -g` still works); `run_onchange_after_00_install_mise_tools.sh.tmpl` runs `mise install` whenever that rendered list changes. Updates: `topgrade` (mise step), followed by the global task `mise run audit` (`dot_config/mise/tasks/executable_audit`): a red/amber/green report on upstream health, repo-identity changes (pinned in `~/.local/state/mise-audit/identity.json`), download verification and runtime EOL. No CVE scanning yet.
+- System and GUI packages are split into per-platform files at `scripts/lib/{macos,arch,debian,fedora}/installer.sh`, included by `run_once_before_install_packages.sh.tmpl` via `{{ includeTemplate (printf "scripts/lib/%s/installer.sh" .os_like) . }}`. Each defines `SYSTEM_PKGS`, `install_system_packages` (must leave `mise` installed) and `install_gui_packages`. Backends: macOS = Homebrew (`brew bundle`); Arch = pacman (no AUR) + the `mise.run` installer; Debian = apt + the `mise.run` installer (shared `install_mise` in `scripts/lib/mise_run.sh`; Manjaro's mise package lags weeks behind); Fedora = Aurora's bundled Homebrew (the image is read-only, so no dnf). Debian and Fedora have no GUI source and log what they skip.
 
 **ZSH plugin layer** (no zinit/antigen)
 
 - OMZ + third-party plugins are downloaded as tarball externals via `.chezmoiexternals/zsh-plugins.toml.tmpl` into `~/.zsh-plugins/`.
 - `dot_zshrc.tmpl` sets up `fpath`, runs `compinit` *early* (OMZ libs/plugins call `compdef`, which only exists after compinit), then sources OMZ libs → OMZ plugins → third-party plugins. **Order constraint: `fast-syntax-highlighting` must be last.**
 - Tool-specific shell setup lives in `dot_zsh/integrations/<tool>.zsh`. `dot_zshrc.tmpl` (line 49) auto-discovers them with `{{ glob }}` at apply time — drop a new file in the dir, no zshrc edit needed.
-
-**Tmux plugins**: same archive-externals model — listed in `.chezmoidata/tmux.yaml`, downloaded via `.chezmoiexternals/tmux-plugins.toml.tmpl`, sourced from `dot_config/tmux/tmux.conf.tmpl`.
 
 **Cert / proxy CA management**
 
@@ -91,8 +94,8 @@ docker compose exec dotfiles2 /home/manjaro/chezmoi/apply.sh
 - **`scripts/` is in `.chezmoiignore`** — treated as a source-only library directory, not deployed to home. Files there are sourced from `apply.sh` directly or templated into managed scripts via `{{ include }}` / `{{ includeTemplate }}`.
 - **`run_*before_*` scripts execute before file deployment.** Read source data from `.chezmoi.sourceDir`, not from `~`. The user's home tree doesn't exist yet at that point.
 - **`dot_zsh/integrations/*.zsh`** is glob-discovered at apply time. Adding a new tool integration means dropping a file there — no other edits.
-- **Per-platform installer files** are templates, not standalone shell scripts. They reference `CLI_PKGS`, `GUI_PKGS`, `resolve_name` from the parent run_once script (which sources the lib via `includeTemplate`).
-- **Minimum chezmoi version**: `2.36.0` (`.chezmoiexternals/` directory). `apply.sh` pins `2.70.3`.
+- **Per-platform installer files** are templates, not standalone shell scripts. They read `GUI_PKGS` from the parent run_once script (which sources the lib via `includeTemplate`) and define `install_system_packages` / `install_gui_packages`; `install_mise` comes from `scripts/lib/mise_run.sh`.
+- **Minimum chezmoi version**: `2.36.0` (`.chezmoiexternals/` directory). `scripts/lib/pinned.sh` pins the bootstrap version (`CHEZMOI_TAG`).
 - **Trust paths**: source of truth is `.chezmoidata/trust.yaml` (`certs_dir_rel`, `bundle_filename`). Templates use `joinPath .chezmoi.homeDir .trust.*`. `apply.sh` hardcodes the same paths with a sync comment because bootstrap runs before chezmoi data is available. **If you change one, change the other.**
 
 ## Agent skills

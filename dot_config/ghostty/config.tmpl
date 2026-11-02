@@ -6,4 +6,5 @@ keybind = cmd+left=unbind
 keybind = cmd+right=unbind
 keybind = cmd+down=unbind
 
-command = /opt/homebrew/bin/herdr
+# herdr comes from mise; the shim path is stable across versions and platforms.
+command = {{ joinPath .chezmoi.homeDir ".local/share/mise/shims/herdr" }}

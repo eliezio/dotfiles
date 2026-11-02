@@ -1,32 +1,39 @@
 # macOS installer adapter (Homebrew).
 #
-#   install_packages CLI_REF GUI_REF
-#     Both refs are merged into one brewfile; cli/gui distinction is irrelevant
-#     here — cask vs formula is determined by BREW_CASK map membership.
 #   install_system_packages
-#     No-op; Homebrew is user-level on macOS.
+#     brew bundle over SYSTEM_PKGS (templated from .packages.system.brew),
+#     which includes mise.
+#   install_gui_packages GUI_REF
+#     brew bundle; cask vs formula is determined by BREW_CASK map membership.
+
+SYSTEM_PKGS=({{ range .packages.system.brew }}{{ . }} {{ end }})
 
 declare -A BREW_NAME=(
-{{ range concat .packages.cli .packages.gui -}}
+{{ range .packages.gui -}}
 {{ if hasKey . "brew" }}  [{{ .name }}]={{ .brew }}
 {{ end -}}
 {{ end -}}
 )
 
 declare -A BREW_CASK=(
-{{ range concat .packages.cli .packages.gui -}}
+{{ range .packages.gui -}}
 {{ if hasKey . "brew_cask" }}  [{{ .name }}]=1
 {{ end -}}
 {{ end -}}
 )
 
-install_system_packages() { :; }
-
-install_packages() {
-  local -n _cli="$1"
-  local -n _gui="$2"
+install_system_packages() {
   local brewfile=""
-  for pkg in "${_cli[@]}" "${_gui[@]}"; do
+  for pkg in "${SYSTEM_PKGS[@]}"; do
+    brewfile+="brew \"$pkg\""$'\n'
+  done
+  brew bundle --file=- <<< "$brewfile"
+}
+
+install_gui_packages() {
+  local -n _gui="$1"
+  local brewfile=""
+  for pkg in "${_gui[@]}"; do
     local name="${BREW_NAME[$pkg]:-$pkg}"
     if [[ -n "${BREW_CASK[$name]:-}" ]]; then
       brewfile+="cask \"$name\""$'\n'

@@ -1,5 +1,10 @@
 [settings]
 experimental = true
+# Skip releases younger than 7 days when resolving `latest` (default 24h):
+# time for a malicious or broken release to be caught and yanked.
+minimum_release_age = "7d"
+# Re-verify provenance on reinstall, not only on first install.
+paranoid = ["provenance"]
 
 [hooks]
 postinstall = "~/.config/mise/hooks/postinstall.sh"

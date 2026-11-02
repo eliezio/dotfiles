@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Once per machine (and again whenever the script changes), offer to remove
+# packages that mise tools now replace. Runs after 00_install_mise_tools, so
+# the replacements are already installed.
+# remove-legacy-packages.sh sha256: {{ include "remove-legacy-packages.sh" | sha256sum }}
+
+{{ include "scripts/lib/log.sh" }}
+
+# It prompts per package; without a terminal, skip instead of hanging.
+if ! { : < /dev/tty; } 2>/dev/null; then
+  log_info "No terminal; skipping legacy package cleanup (run ./remove-legacy-packages.sh later)"
+  exit 0
+fi
+
+# Hand over chezmoi's data so the script doesn't call chezmoi mid-apply.
+export LEGACY_OS_LIKE={{ .os_like | quote }}
+LEGACY_TOOLS=$(printf '%s\n'{{ range .packages.cli }} {{ printf "%s %s" .name .mise | quote }}{{ end }})
+export LEGACY_TOOLS
+
+exec {{ joinPath .chezmoi.sourceDir "remove-legacy-packages.sh" | quote }}

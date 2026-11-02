@@ -40,46 +40,11 @@ esac
 PLATFORM_CACHE_DIR="$CACHE_DIR/${os}_${arch}"
 mkdir -p "$PLATFORM_CACHE_DIR"
 
-pathadd() {
-  local path="$1"
-  if [[ ":$PATH:" != *":$path:"* ]]; then
-    PATH="$path${PATH:+:$PATH}"
-  fi
-}
-
-# Bootstrap eget (download release asset tool) if not already available.
-bootstrap_eget() {
-  if command -v eget &>/dev/null; then
-    return
-  fi
-  if [[ -x "$PLATFORM_CACHE_DIR/eget" ]]; then
-    pathadd "$PLATFORM_CACHE_DIR"
-    return
-  fi
-  log_info "Bootstrapping eget..."
-  curl -fsSL https://zyedidia.github.io/eget.sh | sh
-  mv eget "$PLATFORM_CACHE_DIR/eget"
-  pathadd "$PLATFORM_CACHE_DIR"
-}
-
-log_step "Install eget..."
-bootstrap_eget
+# shellcheck source=scripts/lib/pinned.sh
+source "$SOURCE_DIR/scripts/lib/pinned.sh"
 
 log_step "Install sops..."
-ensure_sops() {
-  if command -v sops &>/dev/null; then
-    echo "sops"
-    return
-  fi
-  if [[ -x "$PLATFORM_CACHE_DIR/sops" ]]; then
-    echo "$PLATFORM_CACHE_DIR/sops"
-    return
-  fi
-  log_info "Downloading sops v3.13.0..."
-  eget --system "${os}/${arch}" --to "$PLATFORM_CACHE_DIR/" --tag v3.13.0 -q getsops/sops --asset ^.sbom
-  echo "$PLATFORM_CACHE_DIR/sops"
-}
-SOPS=$(ensure_sops)
+SOPS=$(ensure_binary sops)
 SOPS_BIN_DIR=$(dirname "$SOPS")
 if [[ ":$PATH:" != *":$SOPS_BIN_DIR:"* ]]; then
   PATH="$SOPS_BIN_DIR${PATH:+:$PATH}"
@@ -97,13 +62,8 @@ ensure_age() {
     AGE_KEYGEN="$PLATFORM_CACHE_DIR/age-keygen"
     return
   fi
-  log_info "Downloading age v1.2.1..."
-  eget --system "${os}/${arch}" --all --to "$PLATFORM_CACHE_DIR/" --tag v1.2.1 -q FiloSottile/age --asset ^.proof
-  # eget preserves archive directory structure; flatten age/age → age
-  if [[ -f "$PLATFORM_CACHE_DIR/age/age" ]]; then
-    mv "$PLATFORM_CACHE_DIR"/age/* "$PLATFORM_CACHE_DIR/"
-    rmdir "$PLATFORM_CACHE_DIR/age"
-  fi
+  log_info "Downloading age $AGE_TAG..."
+  download_age || return
   AGE="$PLATFORM_CACHE_DIR/age"
   AGE_KEYGEN="$PLATFORM_CACHE_DIR/age-keygen"
 }

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Re-runs whenever the generated tool list changes. The `00_` prefix makes it
+# run before the other run_*after_* scripts, which use the tools it installs.
+# packages.toml hash: {{ includeTemplate "dot_config/mise/conf.d/packages.toml.tmpl" . | sha256sum }}
+
+# Shared logging helpers (color vars, log_*).
+{{ include "scripts/lib/log.sh" }}
+
+# mise.run installs to ~/.local/bin, which may not be on PATH yet on first apply.
+PATH="$HOME/.local/bin:$PATH"
+
+log_step "Install mise tools"
+mise install --yes
+log_success "mise tools installed"
+
+# vim: ft=bash

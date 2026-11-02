@@ -1,0 +1,10 @@
+# Generated from .chezmoidata/packages.yaml (packages.cli); edit that file.
+# Kept out of config.toml so `mise use -g` can still edit that one freely.
+[tools]
+{{ range .packages.cli -}}
+{{ if hasKey . "mise_options" -}}
+{{ .mise | quote }} = { version = "latest"{{ range $k, $v := .mise_options }}, {{ $k }} = {{ $v | toJson }}{{ end }} }
+{{ else -}}
+{{ .mise | quote }} = "latest"
+{{ end -}}
+{{ end -}}
