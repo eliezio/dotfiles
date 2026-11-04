@@ -1,0 +1,3 @@
+// apt-repo-policy: audit repository hygiene after every successful update.
+// Warn-only (|| true) so unattended-upgrades is never blocked by it.
+APT::Update::Post-Invoke-Success { "[ -x /usr/local/sbin/apt-repo-audit ] && /usr/local/sbin/apt-repo-audit --hook || true"; };

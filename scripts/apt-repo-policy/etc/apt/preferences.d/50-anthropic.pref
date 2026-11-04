@@ -1,0 +1,5 @@
+# apt-repo-policy: packages downloads.claude.ai may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: claude-code claude-desktop
+Pin: origin "downloads.claude.ai"
+Pin-Priority: 500

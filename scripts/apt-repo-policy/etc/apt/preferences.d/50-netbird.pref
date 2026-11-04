@@ -1,0 +1,5 @@
+# apt-repo-policy: packages pkgs.netbird.io may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: netbird netbird-ui netbird-ui-gtk3 network-manager-netbird
+Pin: origin "pkgs.netbird.io"
+Pin-Priority: 500

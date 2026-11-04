@@ -1,0 +1,5 @@
+# apt-repo-policy: packages download.docker.com may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: docker-ce docker-ce-cli docker-ce-rootless-extras containerd.io docker-buildx-plugin docker-compose-plugin docker-model-plugin cagent docker-secrets-engine docker-secrets-engine-plugins
+Pin: origin "download.docker.com"
+Pin-Priority: 500

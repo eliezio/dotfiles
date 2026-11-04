@@ -1,0 +1,5 @@
+# apt-repo-policy: packages dl.google.com may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: google-chrome-stable
+Pin: origin "dl.google.com"
+Pin-Priority: 500

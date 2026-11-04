@@ -1,0 +1,55 @@
+#!/bin/bash
+# apt-repo-allow — manage the package allow-list of a third-party repository.
+#
+#   apt-repo-allow --list <host>               packages <host> offers, and whether Debian ships them too
+#   apt-repo-allow <name> <host> <package>...  write /etc/apt/preferences.d/50-<name>.pref (replaces it)
+#
+# <host> is the hostname in the repository's URIs: line (the "origin" apt pins on).
+# Names Debian also ships are refused: allowing one would let the repo replace it.
+set -eu
+ROOT=${APT_REPO_POLICY_ROOT:-}
+LISTS=${APT_REPO_POLICY_LISTS:-/var/lib/apt/lists}
+
+die() { echo "apt-repo-allow: $*" >&2; exit 1; }
+in_debian() { apt-cache madison "$1" 2>/dev/null | grep -qE '://[a-z.]*debian\.org/'; }
+
+offered() {
+	local files=("$LISTS/$1"_*_Packages)
+	[ -e "${files[0]}" ] || die "no package index for $1 under $LISTS (is the .sources file in place, and did 'apt update' run?)"
+	awk '/^Package:/ { print $2 }' "${files[@]}" | sort -u
+}
+
+if [ "${1:-}" = --list ]; then
+	[ $# -eq 2 ] || die "usage: apt-repo-allow --list <host>"
+	allowed=$(cat "$ROOT"/etc/apt/preferences.d/*.pref 2>/dev/null |
+		awk -v h="$2" '/^Package:/ { p = $0 } $0 ~ "^Pin:[[:space:]]*origin[[:space:]]+\"?" h "\"?[[:space:]]*$" { n = split(p, w); for (i = 2; i <= n; i++) print w[i] }')
+	for p in $(offered "$2"); do
+		if in_debian "$p"; then s="COLLIDES with Debian (cannot be allowed)"
+		elif grep -qxF "$p" <<<"$allowed"; then s="allowed"
+		else s="blocked"; fi
+		printf '%-40s %s\n' "$p" "$s"
+	done
+	exit 0
+fi
+
+[ $# -ge 3 ] || die "usage: apt-repo-allow <name> <host> <package>...   (or --list <host>)"
+name=$1 host=$2; shift 2
+[[ $name =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "name must be lowercase letters, digits and dashes"
+[[ $host =~ ^[A-Za-z0-9.-]+$ ]]     || die "host must be a bare hostname, e.g. download.docker.com"
+
+for p; do
+	[[ $p =~ ^[a-z0-9][a-z0-9+.-]+$ ]] || die "'$p' is not a package name (globs are refused: they can match Debian names later)"
+	in_debian "$p" && die "'$p' is shipped by Debian; refusing to let $host provide it"
+done
+
+out=$ROOT/etc/apt/preferences.d/50-$name.pref
+tmp=$(mktemp)
+cat >"$tmp" <<EOF
+# apt-repo-policy: packages $host may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: $*
+Pin: origin "$host"
+Pin-Priority: 500
+EOF
+install -m 644 "$tmp" "$out"; rm -f "$tmp"
+echo "wrote ${out#$ROOT}"

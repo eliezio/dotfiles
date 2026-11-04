@@ -1,0 +1,22 @@
+{{ if and (eq .chezmoi.os "linux") (eq .chezmoi.osRelease.id "debian") (not .is_container) -}}
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Debian proper only, not os_like: Ubuntu's archive has o=Ubuntu, so
+# zz-default-deny.pref would pin the whole distribution to -1.
+#
+# Re-runs when any installed file changes. New files need a hash line here.
+# install.sh: {{ include "scripts/apt-repo-policy/install.sh" | sha256sum }}
+# apt-repo-audit: {{ include "scripts/apt-repo-policy/sbin/apt-repo-audit" | sha256sum }}
+# apt-repo-allow: {{ include "scripts/apt-repo-policy/sbin/apt-repo-allow" | sha256sum }}
+# 99apt-repo-audit: {{ include "scripts/apt-repo-policy/etc/apt/apt.conf.d/99apt-repo-audit" | sha256sum }}
+# 00-debian.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/00-debian.pref" | sha256sum }}
+# 50-anthropic.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/50-anthropic.pref" | sha256sum }}
+# 50-brave.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/50-brave.pref" | sha256sum }}
+# 50-chrome.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/50-chrome.pref" | sha256sum }}
+# 50-docker.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/50-docker.pref" | sha256sum }}
+# 50-netbird.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/50-netbird.pref" | sha256sum }}
+# zz-default-deny.pref: {{ include "scripts/apt-repo-policy/etc/apt/preferences.d/zz-default-deny.pref" | sha256sum }}
+
+sudo {{ .chezmoi.sourceDir | quote }}/scripts/apt-repo-policy/install.sh
+{{ end -}}

@@ -1,0 +1,6 @@
+# apt-repo-policy: every other origin is denied unless a package-specific
+# record (written by apt-repo-allow into 50-<name>.pref) lets a name through.
+# A newly added repository is therefore inert until you allow-list it.
+Package: *
+Pin: origin "*"
+Pin-Priority: -1

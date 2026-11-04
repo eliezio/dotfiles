@@ -1,0 +1,102 @@
+#!/bin/bash
+# apt-repo-audit — check that every third-party APT repository follows the
+# policy in README.md. Exit 0 = clean, 1 = violations found.
+#
+#   --hook   quiet when clean; used by APT::Update::Post-Invoke-Success
+#
+# APT_REPO_POLICY_ROOT prefixes every path (tests point it at a fixture tree).
+set -u
+ROOT=${APT_REPO_POLICY_ROOT:-}
+ETC=$ROOT/etc/apt
+HOOK=0; [ "${1:-}" = --hook ] && HOOK=1
+
+fail=0
+err()  { echo "apt-repo-audit: ERROR: $*" >&2; fail=1; }
+warn() { echo "apt-repo-audit: warning: $*" >&2; }
+
+debian_host() { case $1 in deb.debian.org|security.debian.org|*.debian.org) return 0;; esac; return 1; }
+uri_host()    { sed -E 's|^[a-z0-9+]+://||; s|^[^@/]*@||; s|[/:].*||' <<<"$1"; }
+
+# --- 1. legacy one-line format ---------------------------------------------
+for f in "$ETC"/sources.list.d/*.list; do
+	[ -e "$f" ] || continue
+	grep -qE '^[[:space:]]*deb(-src)?[[:space:]]' "$f" &&
+		err "${f#$ROOT}: one-line format; convert to a DEB822 .sources file"
+done
+if [ -f "$ETC/sources.list" ]; then
+	while read -r uri; do
+		h=$(uri_host "$uri"); debian_host "$h" ||
+			err "/etc/apt/sources.list: third-party entry $h; move it to sources.list.d/<name>.sources"
+	done < <(awk '/^[[:space:]]*deb(-src)?[[:space:]]/ { for (i = 2; i <= NF; i++) if ($i !~ /^\[/ && $i !~ /\]$/ && $i ~ /:\/\//) { print $i; break } }' "$ETC/sources.list")
+fi
+
+# --- 2. global trust -------------------------------------------------------
+[ -e "$ETC/trusted.gpg" ] && err "/etc/apt/trusted.gpg exists: keys in it are trusted for every repository"
+for k in "$ETC"/trusted.gpg.d/*; do
+	[ -e "$k" ] || continue
+	case ${k##*/} in debian-archive-*) ;; *) err "${k#$ROOT}: third-party key in global trust; reference it with Signed-By instead";; esac
+done
+
+# --- 3. pin scaffolding ----------------------------------------------------
+[ -f "$ETC/preferences.d/00-debian.pref" ]       || err "00-debian.pref missing: Debian loses its priority-500 pin"
+[ -f "$ETC/preferences.d/zz-default-deny.pref" ] || err "zz-default-deny.pref missing: new repositories are no longer denied by default"
+
+# --- 4. each DEB822 stanza -------------------------------------------------
+# Emits one line per enabled stanza: file|uris|signed-by|components (\x1f-separated:
+# a whitespace IFS would collapse empty fields)
+parse() {
+	awk -v OFS='\037' '
+		function flush() { if (uris != "" && enabled != "no") print file, uris, sb, comp; uris = sb = comp = ""; enabled = "yes" }
+		BEGIN { enabled = "yes" }
+		FNR == 1 { flush(); file = FILENAME }   # a file end also ends a stanza
+		/^[[:space:]]*#/ { next }
+		/^[[:space:]]*$/ { flush(); next }
+		/^[^[:space:]]/ { key = tolower($0); sub(/:.*/, "", key); val = $0; sub(/^[^:]*:[[:space:]]*/, "", val) }
+		key == "uris"       { uris = val }
+		key == "signed-by"  { sb = (val == "" ? "INLINE" : val) }   # empty value = inline key block follows
+		key == "components" { comp = val }
+		key == "enabled"    { enabled = tolower(val) }
+		END { flush() }' "$@"
+}
+
+declare -A hosts=()
+shopt -s nullglob
+srcs=("$ETC"/sources.list.d/*.sources)
+if [ ${#srcs[@]} -gt 0 ]; then
+	while IFS=$'\037' read -r file uris sb comp; do
+		f=${file#$ROOT}
+		for uri in $uris; do
+			h=$(uri_host "$uri"); debian_host "$h" && continue
+			hosts[$h]=$f
+			case $uri in http://*) warn "$f: $h uses plain http (signatures still protect content, not metadata privacy)";; esac
+		done
+		[ -n "$comp" ] || err "$f: no Components: (flat repos cannot be scoped; avoid them)"
+		case $sb in
+			"")     err "$f: no Signed-By: — repository would be verified by any globally trusted key" ;;
+			INLINE) ;;
+			*)      for k in $sb; do
+				        case $k in /etc/apt/trusted.gpg*) err "$f: Signed-By points into global trust ($k)";; esac
+				        [ -f "$ROOT$k" ] || err "$f: Signed-By file $k does not exist"
+			        done ;;
+		esac
+	done < <(parse "${srcs[@]}")
+fi
+
+# --- 5. every third-party host has an allow-list, and it collides with nothing in Debian
+for h in "${!hosts[@]}"; do
+	prefs=$(grep -lE "^Pin:[[:space:]]*origin[[:space:]]+\"?$h\"?[[:space:]]*$" "$ETC"/preferences.d/* 2>/dev/null)
+	if [ -z "$prefs" ]; then
+		warn "${hosts[$h]}: $h has no allow-list, so every package from it is blocked. Run: apt-repo-allow --list $h"
+		continue
+	fi
+	[ -n "$ROOT" ] && continue      # collision check needs the live apt cache
+	for p in $(awk '/^Package:/ && $2 != "*" { for (i = 2; i <= NF; i++) print $i }' $prefs); do
+		apt-cache madison "$p" 2>/dev/null | grep -qE '://[a-z.]*debian\.org/' &&
+			err "allow-list for $h contains '$p', which Debian also ships: the repo could replace the Debian package"
+	done
+done
+
+if [ $fail -eq 0 ] && [ $HOOK -eq 0 ]; then
+	echo "apt-repo-audit: OK (${#hosts[@]} third-party repositories)"
+fi
+exit $fail

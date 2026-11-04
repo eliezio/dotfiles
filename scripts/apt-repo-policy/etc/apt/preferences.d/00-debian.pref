@@ -1,0 +1,6 @@
+# apt-repo-policy: Debian's own archives (main + security + updates) at the
+# normal priority. Must sort before zz-default-deny.pref: among general
+# "Package: *" records the first match wins.
+Package: *
+Pin: release o=Debian
+Pin-Priority: 500

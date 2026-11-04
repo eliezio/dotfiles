@@ -1,0 +1,5 @@
+# apt-repo-policy: packages brave-browser-apt-release.s3.brave.com may provide. Everything else it publishes
+# is denied by zz-default-deny.pref. Managed by apt-repo-allow; edit with it.
+Package: brave-browser brave-keyring brave-origin
+Pin: origin "brave-browser-apt-release.s3.brave.com"
+Pin-Priority: 500
